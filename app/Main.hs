@@ -1,11 +1,18 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
-import Data.Monoid
+import Control.Exception
 import Control.Monad
-import qualified Data.List as DL
 import Data.Data
+import Data.Monoid
+import qualified Data.Text as DT
 import Data.Time
+import Data.Yaml
+import GHC.Generics
+import qualified Data.List as DL
 
 type Amount = Double
 type Rate = Int
@@ -13,13 +20,13 @@ type Rate = Int
 data BudgetType = 
     Income 
   | Expense String
-  deriving (Eq,Ord,Show,Read,Data,Typeable)
+  deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 data BudgetItem = BudgetItem 
   { amount :: Amount
   , rate :: Rate
   , budgetType :: BudgetType
-  } deriving (Eq,Ord,Show,Read,Data,Typeable)
+  } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 type Budget = [BudgetItem]
 
@@ -27,7 +34,23 @@ data Bank = Bank
   { checking :: Amount
   , savings :: Amount
   , lastModified :: Rate
-  } deriving (Eq,Ord,Show,Read,Data,Typeable)
+  } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+
+instance ToJSON BudgetType where
+  toJSON Income = String $ DT.pack "income"
+  toJSON (Expense s) = String $ DT.pack s
+
+instance ToJSON BudgetItem
+instance ToJSON Bank
+
+instance FromJSON BudgetType where
+  parseJSON (String s)
+    | s == "income" = return Income
+    | otherwise = return $ Expense (DT.unpack s)
+  parseJSON _ = fail "Budget type is the wrong yaml type - should be a string"
+
+instance FromJSON BudgetItem
+instance FromJSON Bank
 
 toExpensesOnly :: Budget -> Budget
 toExpensesOnly = filter (noIncome . budgetType)
@@ -84,6 +107,15 @@ makeIncome a r = BudgetItem
 
 startDate = fromGregorian 2017 09 01
 
+dayToRate :: Day -> Rate
+dayToRate = fromInteger . flip diffDays startDate  
+
+rateToDay :: Rate -> Day
+rateToDay = flip addDays startDate . toInteger
+
+loadBudgetsFile :: FilePath -> IO [Budget]
+loadBudgetsFile fp = decodeFileEither fp >>= either throwIO return
+
 income = 1730.77 :: Amount
 loanAmount = 11352.14 :: Amount
 
@@ -111,14 +143,23 @@ budgetLiving =
 
 main :: IO ()
 main = do 
-  putStrLn $ "Loan can be payed off in: " ++ (show n) ++ " days"
-  putStrLn $ "Your living budget will last: " ++ (show m) ++ " days"
-  putStrLn $ "The amount in your bank will be: " ++ (show x)
+  bs <- loadBudgetsFile "budgets.yaml"
+  now <- utctDay <$> getCurrentTime
+  let
+    budgetLoan = bs !! 0
+    budgetLiving = bs !! 1
+    n = getEmptyDate (loanAmount) budgetLoan
+    m = getEmptyDate (checking bank) budgetLiving
+    x n = getBalanceAtPeriod (checking bank) n budgetLiving
+    y n = getBalanceAtPeriod (loanAmount) n budgetLoan
+  putStrLn $ "Loan can be payed off in: " ++ (show n) ++ " days - " ++ (show . rateToDay $ n) 
+  putStrLn $ "Your living budget will last: " ++ (show m) ++ " days - " ++ (show . rateToDay $ m) 
+  putStrLn $ "The amount in your bank will be: " ++ (show $ x n)
+  putStrLn $ "Current balances should be: "
+  putStrLn $ "  Living: " ++ (show . x $ dayToRate now)
+  putStrLn $ "  Loan: " ++ (show . y $ dayToRate now)
   {-putStrLn $ "You can pay off " ++ (show x) ++ " of your loan"-}
   {-putStrLn $ "Loan Budget lasts " ++ (show $ getBalanceAtPeriod loanAmount 122 budgetLoan) ++ " days"-}
   {-printBalances loanAmount 122 budgetLoan-}
   {-putStrLn $ "Diff: "  ++ (show x)-}
   where
-    n = getEmptyDate loanAmount budgetLoan
-    m = getEmptyDate (checking bank) budgetLiving
-    x = getBalanceAtPeriod (checking bank) n budgetLiving

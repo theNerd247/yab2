@@ -1,0 +1,33 @@
+- - amount: -1211.539
+    rate: 15
+    budgetType: loan
+- - amount: 2000
+    rate: 500
+    budgetType: income
+  - amount: 519.231
+    rate: 15
+    budgetType: income
+  - amount: -173.077
+    rate: 15
+    budgetType: tithe
+  - amount: -346.154
+    rate: 15
+    budgetType: taxes
+  - amount: -450
+    rate: 30
+    budgetType: rent
+  - amount: -20
+    rate: 7
+    budgetType: auto
+  - amount: -20
+    rate: 7
+    budgetType: food
+  - amount: -76
+    rate: 31
+    budgetType: insurance
+  - amount: -30
+    rate: 31
+    budgetType: phone
+  - amount: -660
+    rate: 365
+    budgetType: climbing
