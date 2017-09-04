@@ -27,6 +27,8 @@ executable yab2
                      , time
                      , yaml
                      , text
+                     , lens
+                     , data-default
   default-language:    Haskell2010
 
 test-suite yab2-test
