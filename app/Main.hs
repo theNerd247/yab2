@@ -20,6 +20,16 @@ import qualified Data.List as DL
 type Amount = Double
 type Rate = Int
 
+data ExpenseItem = ExpenseItem
+  { _date :: Day
+  , _eAmount :: Amount
+  , _reason :: String
+  } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+
+makeLenses ''ExpenseItem
+
+type Expenses = [ExpenseItem]
+
 data BudgetType = 
     Income 
   | Expense String
@@ -47,6 +57,13 @@ data Bank = Bank
   } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 makeLenses ''Bank
+
+instance Default ExpenseItem where
+  def = ExpenseItem 
+    { _date = fromGregorian 0 0 0
+    , _eAmount = 0
+    , _reason = ""
+    }
 
 instance Default BudgetItem where
   def = BudgetItem
@@ -76,11 +93,15 @@ instance FromJSON BudgetType where
     | otherwise = return $ Expense (DT.unpack s)
   parseJSON _ = fail "Budget type is the wrong yaml type - should be a string"
 
+instance FromJSON ExpenseItem
+
 instance FromJSON BudgetItem
 
 instance FromJSON Budget
 
 instance FromJSON Bank
+
+instance ToJSON ExpenseItem
 
 instance ToJSON BudgetType where
   toJSON Income = String $ DT.pack "income"

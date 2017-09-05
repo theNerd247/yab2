@@ -29,6 +29,7 @@ executable yab2
                      , text
                      , lens
                      , data-default
+                     , cassava
   default-language:    Haskell2010
 
 test-suite yab2-test
