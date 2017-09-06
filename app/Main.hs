@@ -5,35 +5,35 @@
 
 module Main where
 
-import Control.Lens
 import Control.Exception
+import Control.Lens
 import Control.Monad
 import Data.Data
 import Data.Default
 import Data.Monoid
-import qualified Data.Text as DT
 import Data.Time
 import Data.Yaml hiding ((.~))
 import GHC.Generics
+import System.FilePath.Posix
 import qualified Data.List as DL
+import qualified Data.Text as DT
 
 type Amount = Double
 type Rate = Int
-
-data ExpenseItem = ExpenseItem
-  { _date :: Day
-  , _eAmount :: Amount
-  , _reason :: String
-  } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
-
-makeLenses ''ExpenseItem
-
-type Expenses = [ExpenseItem]
 
 data BudgetType = 
     Income 
   | Expense String
   deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+
+data ExpenseItem = ExpenseItem
+  { _date :: Day
+  , _eAmount :: Amount
+  , _reason :: String
+  , _expenseType :: BudgetType
+  } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+
+makeLenses ''ExpenseItem
 
 data BudgetItem = BudgetItem 
   { _budgetType :: BudgetType
@@ -50,6 +50,13 @@ data Budget = Budget
 
 makeLenses ''Budget
 
+data Expenses = Expenses 
+  { _eBudgetName :: String
+  , _expenses :: [ExpenseItem]
+  } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+
+makeLenses ''Expenses
+
 data Bank = Bank
   { _checking :: Amount
   , _savings :: Amount
@@ -58,34 +65,21 @@ data Bank = Bank
 
 makeLenses ''Bank
 
+instance Default BudgetType where
+  def = Income
+
+instance Default Day where
+  def = fromGregorian 0 0 0
+
 instance Default ExpenseItem where
-  def = ExpenseItem 
-    { _date = fromGregorian 0 0 0
-    , _eAmount = 0
-    , _reason = ""
-    }
+
+instance Default Expenses where
 
 instance Default BudgetItem where
-  def = BudgetItem
-    { _amount = 0
-    , _rate = 0
-    , _budgetType = Income
-    }
 
 instance Default Budget where
-  def = Budget
-    { _items = []
-    , _name = ""
-    , _startDate = fromGregorian 0 0 0
-    , _startAmount = 0
-    }
 
 instance Default Bank where
-  def = Bank
-    { _checking = 0
-    , _savings = 0
-    , _lastModified = 0
-    }
 
 instance FromJSON BudgetType where
   parseJSON (String s)
@@ -94,6 +88,8 @@ instance FromJSON BudgetType where
   parseJSON _ = fail "Budget type is the wrong yaml type - should be a string"
 
 instance FromJSON ExpenseItem
+
+instance FromJSON Expenses
 
 instance FromJSON BudgetItem
 
@@ -112,6 +108,8 @@ instance ToJSON BudgetItem
 instance ToJSON Budget
 
 instance ToJSON Bank
+
+instance ToJSON Expenses
 
 amount :: Lens' BudgetItem Amount
 amount = lens gt st
@@ -187,8 +185,8 @@ dayToRate s = fromInteger . flip diffDays s
 rateToDay :: Day -> Rate -> Day
 rateToDay s = flip addDays s . toInteger
 
-loadBudgetsFile :: FilePath -> IO [Budget]
-loadBudgetsFile fp = decodeFileEither fp >>= either throwIO return
+loadYamlFile :: (FromJSON a) => FilePath -> IO [a]
+loadYamlFile fp = decodeFileEither fp >>= either throwIO return
 
 currentBudgetBal :: Budget -> IO Amount
 currentBudgetBal b = do 
@@ -230,7 +228,8 @@ budgetLiving = def
 
 main :: IO ()
 main = do 
-  bs <- loadBudgetsFile "budgets.yaml"
+  bs <- loadYamlFile "budgets.yaml"
+  es <- loadYamlFile "expenses.yaml" :: IO [Expenses] 
   now <- currentDay
   let
     budgetLoan = bs !! 0
