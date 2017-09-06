@@ -1,0 +1,44 @@
+- _name: Loan
+  _startAmount: 11352.14
+  _startDate: '2017-09-01'
+  _items:
+  - _budgetType: loan
+    _rate: 15
+    _amount: -1211.539
+- _name: Living
+  _startAmount: 1730.77
+  _startDate: '2017-09-01'
+  _items:
+  - _budgetType: income
+    _rate: 500
+    _amount: -2000
+  - _budgetType: income
+    _rate: 15
+    _amount: -519.231
+  - _budgetType: tithe
+    _rate: 15
+    _amount: -173.077
+  - _budgetType: taxes
+    _rate: 15
+    _amount: -346.154
+  - _budgetType: rent
+    _rate: 31
+    _amount: -350
+  - _budgetType: auto
+    _rate: 7
+    _amount: -20
+  - _budgetType: food
+    _rate: 7
+    _amount: -20
+  - _budgetType: insurance
+    _rate: 31
+    _amount: -76
+  - _budgetType: phone
+    _rate: 31
+    _amount: -30
+  - _budgetType: climbing
+    _rate: 31
+    _amount: -55
+  - _budgetType: mentoring
+    _rate: 31
+    _amount: -7

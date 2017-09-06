@@ -1,0 +1,8 @@
+-  _eBudgetName: living
+   _expenses: []
+-  _eBudgetName: loan
+   _expenses:
+   - _date: '2017-09-05'
+     _reason: Loan payment
+     _eAmount: -1211.00
+     _expenseType: income
