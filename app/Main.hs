@@ -8,6 +8,7 @@ module Main where
 import Control.Exception
 import Control.Lens
 import Control.Monad
+import CSV
 import Data.Data
 import Data.Default
 import Data.Monoid
@@ -17,6 +18,7 @@ import GHC.Generics
 import System.FilePath.Posix
 import qualified Data.List as DL
 import qualified Data.Text as DT
+import qualified Data.Csv as CSV
 
 type Amount = Double
 type Rate = Int
@@ -25,6 +27,16 @@ data BudgetType =
     Income 
   | Expense String
   deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+
+data Transaction = Transaction
+  { _tDate :: Day
+  , _tNo :: String
+  , _tDesc :: String
+  , _tDebit :: Amount
+  , _tCredit :: Amount
+  } deriving (Eq,Ord,Show,Read,Data,Typeable)
+
+makeLenses ''Transaction
 
 data ExpenseItem = ExpenseItem
   { _date :: Day
