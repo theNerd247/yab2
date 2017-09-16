@@ -5,22 +5,25 @@
 
 module Main where
 
+import CSV
 import Control.Exception
 import Control.Lens
 import Control.Monad
-import CSV
 import Data.Data
+import Data.Foldable
 import Data.Default
 import Data.Monoid
 import Data.Time
 import Data.Yaml hiding ((.~))
 import GHC.Generics
 import System.FilePath.Posix
+import qualified Data.Csv as CSV
+import qualified Data.Csv as CSV
 import qualified Data.List as DL
 import qualified Data.Text as DT
-import qualified Data.Csv as CSV
 
 type Amount = Double
+
 type Rate = Int
 
 data BudgetType = 
@@ -34,7 +37,7 @@ data Transaction = Transaction
   , _tDesc :: String
   , _tDebit :: Amount
   , _tCredit :: Amount
-  } deriving (Eq,Ord,Show,Read,Data,Typeable)
+  } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 makeLenses ''Transaction
 
@@ -77,21 +80,25 @@ data Bank = Bank
 
 makeLenses ''Bank
 
+instance CSV.FromRecord Transaction
+
+instance CSV.ToRecord Transaction
+
 instance Default BudgetType where
   def = Income
 
 instance Default Day where
   def = fromGregorian 0 0 0
 
-instance Default ExpenseItem where
+instance Default ExpenseItem 
 
-instance Default Expenses where
+instance Default Expenses 
 
-instance Default BudgetItem where
+instance Default BudgetItem 
 
-instance Default Budget where
+instance Default Budget 
 
-instance Default Bank where
+instance Default Bank 
 
 instance FromJSON BudgetType where
   parseJSON (String s)
@@ -237,6 +244,23 @@ budgetLiving = def
     , newExpense "climbing" & amount .~ 55 & rate .~ 31
     , newExpense "mentoring" & amount .~ 7 & rate .~ 31
     ]
+
+loadTransactionFile :: FilePath -> IO [Transaction]
+loadTransactionFile = loadCSVFile . ("transactions" </>)
+
+transToExpenses :: (Foldable f) => String -> f Transaction -> Expenses
+transToExpenses bname ts = def
+  & eBudgetName .~ bname
+  & expenses .~ exps 
+  where
+    exps = toExpense <$> (toList ts)
+    toExpense t = def
+      & date .~ (t^.tDate)
+      & reason .~ (t^.tDesc)
+      & eAmount .~ (t^.tDebit - t^.tCredit)
+      & expenseType .~ case (t^.tDebit > 0) of
+        True -> Income
+        _ -> Expense ""
 
 main :: IO ()
 main = do 
