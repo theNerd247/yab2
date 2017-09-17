@@ -266,6 +266,12 @@ transToExpenses bname ts = def
         c = t^.tCredit . to num
         num = maybe 0 id
 
+loadNewTransactionFile :: String -> FilePath -> IO ()
+loadNewTransactionFile bName fp = loadTransactionFile fp 
+  >>= encodeFile ("transactions" </> (fp) -<.> "yaml") 
+    . (\es -> es & expenses %~ DL.sortOn _date) 
+    . (transToExpenses bName)
+
 main :: IO ()
 main = do 
   bs <- loadYamlFile "budgets.yaml"
