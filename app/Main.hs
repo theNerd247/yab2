@@ -280,41 +280,29 @@ loadNewTransactionFile bName fp = loadTransactionFile fp
     . (\es -> es & expenses %~ DL.sortOn _date) 
     . (transToExpenses bName)
 
-mergeExpenses :: (MonadThrow m) => Expenses -> Expenses -> m Expenses
-mergeExpenses es1 es2 
-  | es1^.eBudgetName /= es2^.eBudgetName = throwM . BadMergeException $ "Budget types don't match: " ++ (es1^.eBudgetName) ++ " != " ++ (es2^.eBudgetName)
-  | otherwise = return $ es1 & expenses .~ mergeDups pred mod (es1^.expenses) (es2^.expenses)
+mergeExpenses :: Expenses -> Expenses -> Expenses
+mergeExpenses es1 es2 = es1 & expenses .~ mconcat (mergeDups pred mod ((:[]) <$> es1^.expenses) ((:[]) <$> es2^.expenses))
   where
-    pred a b = (a^.date == b^.date) && (a^.eAmount == b^.eAmount)
-    mod a = a & reason %~ (++" ?")
+    pred (a:[]) (b:[]) = (a^.date == b^.date) && (a^.eAmount == b^.eAmount)
+    mod (a:[]) bs = (a & reason %~ (++" ?")) : bs
 
--- | merges two lists by performing the following steps:
---  * merges the two lists
---  * modifies each element with a given modifier based on a given predicate
---  which compares that each element to all other elements in the list
---  * sorts the elements where all modified elements are placed at the front of
---  the list
-mergeDups :: (Ord a) => (a -> a -> Bool) -> (a -> a) -> [a] -> [a] -> [a]
-mergeDups pred modF as bs = fmap (either id id) . DL.sort . foldr merge [] $ as ++ bs
+mergeDups :: (a -> a -> Bool) -> (a -> a -> a) -> [a] -> [a] -> [a]
+mergeDups pred mod as bs = merges (as ++ bs)
   where
-    merge x xs
-      | (getAny $ foldMap (srt x) xs) = (Left $ modF x) : xs
-      | otherwise = (Right x) : xs
-    srt y = Any . pred y . (either id id)
+    merges [] = []
+    merges (a:xs) = 
+      let (as,bs) = DL.partition (pred a) xs
+      in (merge (a:as)) : (merges bs)
+    merge = foldr1 mod
 
 mergeExpensesFiles :: FilePath -> FilePath -> IO ()
 mergeExpensesFiles fp1 fp2 = do
   es1 <- loadYamlFile fp1 
   es2 <- loadYamlFile fp2
-  merged <- mergeExs (es1 ++ es2)
-  encodeFile (fp1 -<.> "" ++ "_merged.yaml") (merged :: [Expenses])
+  let merged = mergeDups pred mergeExpenses es1 es2
+  encodeFile (fp1 -<.> "" ++ "_merged.yaml") merged
   where
-    mergeExs [] = return []
-    mergeExs [a] = return [a]
-    mergeExs (a:xs) = 
-      let (as,bs) = DL.partition (\x -> x^.eBudgetName == a^.eBudgetName) xs
-      in (:) <$> (merge (a:as)) <*> mergeExs bs
-    merge (x:xs) = foldrM mergeExpenses x xs
+    pred a x = x^.eBudgetName == a^.eBudgetName 
 
 main :: IO ()
 main = do 
