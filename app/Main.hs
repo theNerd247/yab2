@@ -275,7 +275,7 @@ transToExpenses bname ts = def
 
 loadNewTransactionFile :: String -> FilePath -> IO ()
 loadNewTransactionFile bName fp = loadTransactionFile fp 
-  >>= encodeFile ("transactions" </> (fp) -<.> "yaml")
+  >>= encodeFile ((fp) -<.> "yaml")
     . (:[])
     . (\es -> es & expenses %~ DL.sortOn _date) 
     . (transToExpenses bName)
