@@ -15,7 +15,7 @@ import Data.Default
 import Data.Monoid
 import Data.Time
 import Data.Yaml hiding ((.~))
-import GHC.Generics
+import GHC.Generics hiding (to)
 import System.FilePath.Posix
 import qualified Data.Csv as CSV
 import qualified Data.Csv as CSV
@@ -35,8 +35,8 @@ data Transaction = Transaction
   { _tDate :: Day
   , _tNo :: String
   , _tDesc :: String
-  , _tDebit :: Amount
-  , _tCredit :: Amount
+  , _tDebit :: Maybe Amount
+  , _tCredit :: Maybe Amount
   } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 makeLenses ''Transaction
@@ -257,10 +257,14 @@ transToExpenses bname ts = def
     toExpense t = def
       & date .~ (t^.tDate)
       & reason .~ (t^.tDesc)
-      & eAmount .~ (t^.tDebit - t^.tCredit)
-      & expenseType .~ case (t^.tDebit > 0) of
+      & eAmount .~ (c - d)
+      & expenseType .~ case (c > 0) of
         True -> Income
         _ -> Expense ""
+      where
+        d = t^.tDebit . to num
+        c = t^.tCredit . to num
+        num = maybe 0 id
 
 main :: IO ()
 main = do 

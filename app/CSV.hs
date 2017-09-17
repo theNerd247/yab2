@@ -78,7 +78,7 @@ saveCSVFile f = liftIO . writeFile f . unpack . CSV.encodeWith csvEncodeOptions
 loadCSVFile :: (MonadThrow m, MonadIO m, CSV.FromRecord a) => FilePath -> m [a]
 loadCSVFile f = do 
   bs <- liftIO $ readFile f
-  either mkerror mklist . CSV.decode CSV.NoHeader . pack $ bs
+  either mkerror mklist . CSV.decode CSV.HasHeader . pack $ bs
     where 
     -- | convert the result from a Vector to a []
     mklist = return . GE.toList
