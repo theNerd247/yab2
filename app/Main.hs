@@ -6,9 +6,11 @@
 module Main where
 
 import CSV
+import Control.Monad.Catch
 import Control.Exception
 import Control.Lens
 import Control.Monad
+import Control.Monad.Fix
 import Data.Data
 import Data.Foldable
 import Data.Default
@@ -25,6 +27,8 @@ import qualified Data.Text as DT
 type Amount = Double
 
 type Rate = Int
+
+data BadMergeException = BadMergeException String deriving (Eq,Ord,Show,Read,Data,Typeable)
 
 data BudgetType = 
     Income 
@@ -80,6 +84,7 @@ data Bank = Bank
 
 makeLenses ''Bank
 
+
 instance CSV.FromRecord Transaction
 
 instance CSV.ToRecord Transaction
@@ -99,6 +104,8 @@ instance Default BudgetItem
 instance Default Budget 
 
 instance Default Bank 
+
+instance Exception BadMergeException
 
 instance FromJSON BudgetType where
   parseJSON (String s)
@@ -268,9 +275,46 @@ transToExpenses bname ts = def
 
 loadNewTransactionFile :: String -> FilePath -> IO ()
 loadNewTransactionFile bName fp = loadTransactionFile fp 
-  >>= encodeFile ("transactions" </> (fp) -<.> "yaml") 
+  >>= encodeFile ("transactions" </> (fp) -<.> "yaml")
+    . (:[])
     . (\es -> es & expenses %~ DL.sortOn _date) 
     . (transToExpenses bName)
+
+mergeExpenses :: (MonadThrow m) => Expenses -> Expenses -> m Expenses
+mergeExpenses es1 es2 
+  | es1^.eBudgetName /= es2^.eBudgetName = throwM . BadMergeException $ "Budget types don't match: " ++ (es1^.eBudgetName) ++ " != " ++ (es2^.eBudgetName)
+  | otherwise = return $ es1 & expenses .~ mergeDups pred mod (es1^.expenses) (es2^.expenses)
+  where
+    pred a b = (a^.date == b^.date) && (a^.eAmount == b^.eAmount)
+    mod a = a & reason %~ (++" ?")
+
+-- | merges two lists by performing the following steps:
+--  * merges the two lists
+--  * modifies each element with a given modifier based on a given predicate
+--  which compares that each element to all other elements in the list
+--  * sorts the elements where all modified elements are placed at the front of
+--  the list
+mergeDups :: (Ord a) => (a -> a -> Bool) -> (a -> a) -> [a] -> [a] -> [a]
+mergeDups pred modF as bs = fmap (either id id) . DL.sort . foldr merge [] $ as ++ bs
+  where
+    merge x xs
+      | (getAny $ foldMap (srt x) xs) = (Left $ modF x) : xs
+      | otherwise = (Right x) : xs
+    srt y = Any . pred y . (either id id)
+
+mergeExpensesFiles :: FilePath -> FilePath -> IO ()
+mergeExpensesFiles fp1 fp2 = do
+  es1 <- loadYamlFile fp1 
+  es2 <- loadYamlFile fp2
+  merged <- mergeExs (es1 ++ es2)
+  encodeFile (fp1 -<.> "" ++ "_merged.yaml") (merged :: [Expenses])
+  where
+    mergeExs [] = return []
+    mergeExs [a] = return [a]
+    mergeExs (a:xs) = 
+      let (as,bs) = DL.partition (\x -> x^.eBudgetName == a^.eBudgetName) xs
+      in (:) <$> (merge (a:as)) <*> mergeExs bs
+    merge (x:xs) = foldrM mergeExpenses x xs
 
 main :: IO ()
 main = do 
