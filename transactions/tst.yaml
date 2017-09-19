@@ -1,0 +1,14 @@
+- _expenses:
+  - _date: '2017-08-01'
+    _reason: POS Debit - Visa Check Card 4426 - KROGER 1000 WHITLOC MARIETTA
+    _eAmount: -8.57
+    _expenseType: ''
+  - _date: '2017-08-01'
+    _reason: POS Debit - Visa Check Card 4426 - AMAZON VIDEO ON DE AMZNCOM B
+    _eAmount: -5.99
+    _expenseType: ''
+  - _date: '2017-08-02'
+    _reason: POS Debit - Visa Check Card 4426 - VCNITI COBBCOUNTY CARLSBAD C
+    _eAmount: -28
+    _expenseType: ''
+  _eBudgetName: living

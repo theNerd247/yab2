@@ -21,6 +21,7 @@ import GHC.Generics hiding (to)
 import System.FilePath.Posix
 import qualified Data.Csv as CSV
 import qualified Data.Csv as CSV
+import qualified Data.Map as DM
 import qualified Data.List as DL
 import qualified Data.Text as DT
 
@@ -61,8 +62,7 @@ data BudgetItem = BudgetItem
   } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 data Budget = Budget 
-  { _name :: String
-  , _startDate :: Day
+  { _startDate :: Day
   , _startAmount :: Amount
   , _items :: [BudgetItem]
   } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
@@ -70,8 +70,7 @@ data Budget = Budget
 makeLenses ''Budget
 
 data Expenses = Expenses 
-  { _eBudgetName :: String
-  , _expenses :: [ExpenseItem]
+  { _expenses :: [ExpenseItem]
   } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 makeLenses ''Expenses
@@ -84,6 +83,9 @@ data Bank = Bank
 
 makeLenses ''Bank
 
+type Budgets = DM.Map String Budget
+
+type Expenses = DM.Map String [ExpenseItem]
 
 instance CSV.FromRecord Transaction
 
@@ -255,9 +257,8 @@ budgetLiving = def
 loadTransactionFile :: FilePath -> IO [Transaction]
 loadTransactionFile = loadCSVFile . ("transactions" </>)
 
-transToExpenses :: (Foldable f) => String -> f Transaction -> Expenses
+transToExpenses :: (Foldable f) => f Transaction -> Expenses
 transToExpenses bname ts = def
-  & eBudgetName .~ bname
   & expenses .~ exps 
   where
     exps = toExpense <$> (toList ts)
@@ -285,6 +286,13 @@ mergeExpenses es1 es2 = es1 & expenses .~ mconcat (mergeDups pred mod ((:[]) <$>
   where
     pred (a:[]) (b:[]) = (a^.date == b^.date) && (a^.eAmount == b^.eAmount)
     mod (a:[]) bs = (a & reason %~ (++" ?")) : bs
+
+partM :: (Foldable f) => (a -> Bool) -> f a -> ([a],[a])
+partM pred = foldr p ([],[])
+  where
+    p x ~(fs,gs)
+      | pred x = ((x:fs),gs)
+      | otherwise = (fs,(x:gs))
 
 mergeDups :: (a -> a -> Bool) -> (a -> a -> a) -> [a] -> [a] -> [a]
 mergeDups pred mod as bs = merges (as ++ bs)

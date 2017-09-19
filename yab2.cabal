@@ -22,6 +22,7 @@ executable yab2
                      , exceptions
                      , cassava
                      , data-default
+                     , containers
                      , filepath
                      , lens
                      , text
