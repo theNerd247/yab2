@@ -14,8 +14,9 @@ cabal-version:       >=1.10
 
 executable yab2
   hs-source-dirs:      app
-  main-is:             Main.hs
-  other-modules:       CSV
+  main-is:             Main2.hs
+  other-modules:       Data.Budget
+                     , CSV
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , bytestring

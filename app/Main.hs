@@ -1,8 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
-
 module Main where
 
 import CSV
@@ -11,6 +6,7 @@ import Control.Exception
 import Control.Lens
 import Control.Monad
 import Control.Monad.Fix
+import Data.Budget
 import Data.Data
 import Data.Foldable
 import Data.Default
@@ -24,147 +20,9 @@ import qualified Data.Csv as CSV
 import qualified Data.List as DL
 import qualified Data.Text as DT
 
-type Amount = Double
-
-type Rate = Int
-
 data BadMergeException = BadMergeException String deriving (Eq,Ord,Show,Read,Data,Typeable)
 
-data BudgetType = 
-    Income 
-  | Expense String
-  deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
-
-data Transaction = Transaction
-  { _tDate :: Day
-  , _tNo :: String
-  , _tDesc :: String
-  , _tDebit :: Maybe Amount
-  , _tCredit :: Maybe Amount
-  } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
-
-makeLenses ''Transaction
-
-data ExpenseItem = ExpenseItem
-  { _date :: Day
-  , _eAmount :: Amount
-  , _reason :: String
-  , _expenseType :: BudgetType
-  } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
-
-makeLenses ''ExpenseItem
-
-data BudgetItem = BudgetItem 
-  { _budgetType :: BudgetType
-  , _rate :: Rate
-  , _amount :: Amount
-  } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
-
-data Budget = Budget 
-  { _name :: String
-  , _startDate :: Day
-  , _startAmount :: Amount
-  , _items :: [BudgetItem]
-  } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
-
-makeLenses ''Budget
-
-data Expenses = Expenses 
-  { _eBudgetName :: String
-  , _expenses :: [ExpenseItem]
-  } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
-
-makeLenses ''Expenses
-
-data Bank = Bank
-  { _checking :: Amount
-  , _savings :: Amount
-  , _lastModified :: Rate
-  } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
-
-makeLenses ''Bank
-
-instance CSV.FromRecord Transaction
-
-instance CSV.ToRecord Transaction
-
-instance Default BudgetType where
-  def = Income
-
-instance Default Day where
-  def = fromGregorian 0 0 0
-
-instance Default ExpenseItem 
-
-instance Default Expenses 
-
-instance Default BudgetItem 
-
-instance Default Budget 
-
-instance Default Bank 
-
 instance Exception BadMergeException
-
-instance FromJSON BudgetType where
-  parseJSON (String s)
-    | s == "income" = return Income
-    | otherwise = return $ Expense (DT.unpack s)
-  parseJSON _ = fail "Budget type is the wrong yaml type - should be a string"
-
-instance FromJSON ExpenseItem
-
-instance FromJSON Expenses
-
-instance FromJSON BudgetItem
-
-instance FromJSON Budget
-
-instance FromJSON Bank
-
-instance ToJSON ExpenseItem
-
-instance ToJSON BudgetType where
-  toJSON Income = String $ DT.pack "income"
-  toJSON (Expense s) = String $ DT.pack s
-
-instance ToJSON BudgetItem
-
-instance ToJSON Budget
-
-instance ToJSON Bank
-
-instance ToJSON Expenses
-
-amount :: Lens' BudgetItem Amount
-amount = lens gt st
-  where
-    st s a = BudgetItem 
-      { _amount = -1*(abs a)
-      , _rate = _rate s
-      , _budgetType = _budgetType s
-      }
-    gt = _amount
-
-rate :: Lens' BudgetItem Rate
-rate = lens gt st
-  where
-    st s r = BudgetItem 
-      { _amount = _amount s
-      , _rate = r
-      , _budgetType = _budgetType s
-      }
-    gt = _rate
-
-budgetType :: Lens' BudgetItem BudgetType
-budgetType = lens gt st
-  where
-    st s t = BudgetItem 
-      { _amount = _amount s
-      , _rate = _rate s
-      , _budgetType = t
-      }
-    gt = _budgetType
 
 getExpense :: String -> Budget -> Maybe BudgetItem
 getExpense n b = DL.find (isName . _budgetType) $ b^.items
@@ -222,6 +80,7 @@ loanAmount = 11352.14 :: Amount
 
 bank = def & checking .~ 3868.88 & savings .~ 1848.55
 
+budgetLoan :: Budget
 budgetLoan = def 
   & name .~ "Loan"
   & startDate .~ fromGregorian 2017 09 01
@@ -232,6 +91,7 @@ budgetLoan = def
       & rate .~ 15 
     ]
 
+budgetLiving :: Budget
 budgetLiving = def
   & name .~ "Living"
   & startDate .~ fromGregorian 2017 09 01
