@@ -84,7 +84,6 @@ data Bank = Bank
 
 makeLenses ''Bank
 
-
 instance CSV.FromRecord Transaction
 
 instance CSV.ToRecord Transaction
@@ -167,7 +166,6 @@ budgetType = lens gt st
       }
     gt = _budgetType
 
-
 getExpense :: String -> Budget -> Maybe BudgetItem
 getExpense n b = DL.find (isName . _budgetType) $ b^.items
   where
@@ -177,7 +175,7 @@ getExpense n b = DL.find (isName . _budgetType) $ b^.items
 -- runs a budget for "p" periods given a starting amount "start" and returns the
 -- final balance. 
 getBalanceAtPeriod :: Rate -> Budget -> Amount
-getBalanceAtPeriod p b = (b^.startAmount +) . getSum . mconcat . fmap sumItem $ b^.items
+getBalanceAtPeriod p b = (b^.startAmount +) . getSum . foldMap sumItem $ b^.items
   where
     sumItem i = Sum $ (i^.amount)*(fromIntegral . floor . toRational $ p `div` (i^.rate))
 
