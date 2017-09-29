@@ -5,8 +5,6 @@ import Data.Default (def)
 import Control.Lens
 import Data.Time (utctDay, getCurrentTime, fromGregorian)
 
-currentDay = utctDay <$> getCurrentTime
-
 income = 1730.77 :: Amount
 loanAmount = 11352.14 :: Amount
 
@@ -16,11 +14,6 @@ mkBItem e a r = (def :: BudgetItem)
     & budgetType .~ Expense e
     & rate .~ r 
     & amount .~ a
-
-currentBudgetBal :: Budget -> IO Amount
-currentBudgetBal b = do 
-  n <- currentDay 
-  return $ getBalanceAtPeriod (dayToRate (b^.startDate) n) b
 
 budgetLoan :: Budget
 budgetLoan = def 

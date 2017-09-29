@@ -247,3 +247,8 @@ printBalances start end budget = sequence_ $ [start..end]^..traverse . to printB
          (show d)
       ++ ": "
       ++ (show $ getBalanceAtPeriod d budget)
+
+currentBudgetBal :: (BudgetAtPeriod a, HasBudgetStart (f a), HasBudgetList (f a) a) => f a -> IO Amount
+currentBudgetBal b = do 
+  n <- utctDay <$> getCurrentTime 
+  return $ getBalanceAtPeriod (dayToRate (b^.startDate) n) b
