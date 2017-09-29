@@ -5,6 +5,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Data.Budget where
 
@@ -41,8 +42,8 @@ data BudgetAmount = BudgetAmount
   } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 data ExpenseItem = ExpenseItem
-  { _date :: Day
-  , _reason :: String
+  { _expenseDate :: Day
+  , _expenseReason :: String
   , _expenseItemBudgetAmount :: BudgetAmount
   } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
@@ -99,7 +100,7 @@ class HasBudgetAmount a where
   budgetType :: Lens' a BudgetType
   budgetType = budgetAmount . budgetType
 
-class HasBudgetList m a | m -> a where
+class (HasBudgetAmount a) => HasBudgetList m a | m -> a where
   budgetList :: Lens' m (BudgetList a)
 
   items :: Lens' m [a]
@@ -108,15 +109,33 @@ class HasBudgetList m a | m -> a where
   budgetListBudgetStart :: Lens' m BudgetStart
   budgetListBudgetStart = budgetList . budgetListBudgetStart
 
+class (HasBudgetAmount a) => BudgetAtPeriod a where
+  budgetAtPeriod :: (HasBudgetStart s) => s -> Rate -> Getter a Amount
+
+instance BudgetAtPeriod BudgetItem where
+  budgetAtPeriod _ p = to gt
+    where
+      gt b = (b^.amount)*(fromIntegral . floor . toRational $ p `div` (b^.rate))
+
+instance BudgetAtPeriod ExpenseItem where
+  budgetAtPeriod s p = to gt
+    where 
+      gt e
+        | dayToRate (s^.startDate) (e^.expenseDate) == p = e^.amount
+        | otherwise = 0
+
 instance HasBudgetAmount BudgetAmount where
   budgetAmount = id
   
   amount = budgetAmount . (lens gt st)
     where
       st s a = BudgetAmount 
-        { _amount = -1*(abs a)
+        { _amount = toAmnt (_budgetType s)
         , _budgetType = _budgetType s
         }
+        where
+        toAmnt Income = abs a
+        toAmnt _ = -1*(abs a)
       gt = _amount
 
   budgetType = budgetAmount . (lens gt st)
@@ -127,7 +146,7 @@ instance HasBudgetAmount BudgetAmount where
         }
       gt = _budgetType
 
-instance HasBudgetList (BudgetList a) a where
+instance (HasBudgetAmount a) => HasBudgetList (BudgetList a) a where
   budgetList = id
   items = budgetList . go where go f (BudgetList s l) = (\l' -> BudgetList s l') <$> f l
   budgetListBudgetStart = budgetList . go where go f (BudgetList s l) = (\s' -> BudgetList s' l) <$> f s
@@ -138,7 +157,7 @@ instance HasBudgetAmount BudgetItem where
 instance HasBudgetAmount ExpenseItem where
   budgetAmount = expenseItemBudgetAmount
 
-instance HasBudgetStart (BudgetList a) where
+instance (HasBudgetAmount a) => HasBudgetStart (BudgetList a) where
   budgetStart = budgetListBudgetStart
 
 instance CSV.FromRecord Transaction
@@ -192,3 +211,23 @@ instance ToJSON Bank
 instance ToJSON BudgetAmount
 
 instance ToJSON BudgetStart
+
+dayToRate :: Day -> Day -> Rate
+dayToRate s = fromInteger . flip diffDays s
+
+rateToDay :: Day -> Rate -> Day
+rateToDay s = flip addDays s . toInteger
+
+-- runs a budget for "p" periods given a starting amount "start" and returns the
+-- final balance. 
+getBalanceAtPeriod :: (BudgetAtPeriod a, HasBudgetStart (f a), HasBudgetList (f a) a) => Rate -> (f a) -> Amount
+getBalanceAtPeriod p b = (b^.startAmount) + (sum $ b^.items^..traverse.budgetAtPeriod (b^.budgetStart) p)
+
+-- gets the budget balance from start to end periods (both inclusive)
+getBalancesBetween :: (BudgetAtPeriod a, HasBudgetStart (f a), HasBudgetList (f a) a) => Rate -> Rate -> (f a) -> [Amount]
+getBalancesBetween start end b = [start..end]^..traverse . to (flip getBalanceAtPeriod b)
+
+compareBudgetsBetween :: (BudgetAtPeriod a, HasBudgetStart (f a), HasBudgetList (f a) a, BudgetAtPeriod b, HasBudgetStart (g b), HasBudgetList (g b) b) => Rate -> Rate -> (f a) -> (g b) -> [Amount]
+compareBudgetsBetween start end b1 b2 = [start..end]^..traverse . to compare
+  where
+    compare p = (getBalanceAtPeriod p b2) - (getBalanceAtPeriod p b1)
