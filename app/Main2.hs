@@ -3,42 +3,52 @@ module Main where
 import Data.Budget
 import Data.Default (def)
 import Control.Lens
-import Data.Time (fromGregorian)
+import Data.Time (utctDay, getCurrentTime, fromGregorian)
 
-budgetTest :: Budget
-budgetTest = def
-  & name .~ "Test"
-  & startAmount .~ 10.00
-  & items .~ 
-    [mkItem 2 1 "camels"
-    ,mkItem 7 4 "potatoes"
-    ,mkItem 6 0.2 "beans"
+currentDay = utctDay <$> getCurrentTime
+
+income = 1730.77 :: Amount
+loanAmount = 11352.14 :: Amount
+
+bank = def & checking .~ 3868.88 & savings .~ 1848.55
+
+mkBItem e a r = (def :: BudgetItem)
+    & budgetType .~ Expense e
+    & rate .~ r 
+    & amount .~ a
+
+currentBudgetBal :: Budget -> IO Amount
+currentBudgetBal b = do 
+  n <- currentDay 
+  return $ getBalanceAtPeriod (dayToRate (b^.startDate) n) b
+
+budgetLoan :: Budget
+budgetLoan = def 
+  & name .~ "Loan"
+  & startDate .~ fromGregorian 2017 09 01
+  & startAmount .~ loanAmount
+  & items .~
+    [mkBItem "loan" (income - (income*0.1 + income*0.2)) 15
     ]
   where
-    mkItem r a e = def 
-      & rate .~ r 
-      & budgetType .~ Expense e
-      & amount .~ a
 
-expensesTest :: Expenses
-expensesTest = def 
-  & name .~ "Test"
-  & startDate .~ sDate
-  & startAmount .~ budgetTest^.startAmount
+budgetLiving :: Budget
+budgetLiving = def
+  & name .~ "Living"
+  & startDate .~ fromGregorian 2017 09 01
+  & startAmount .~ income
   & items .~ 
-    [mkItem 7 1 "Food" "beans"
-    ,mkItem 7 2 "Animals" "camels"
-    ,mkItem 7 4 "goofy" "potatoes"
+    [ def & amount .~ 500 & rate .~ 2000
+    , def & amount .~ (income*0.1 + income*0.2) & rate .~ 15
+    , mkBItem "tithe" (income*0.1) 15
+    , mkBItem "taxes"  (income*0.2) 15
+    , mkBItem "rent"      350 31
+    , mkBItem "auto"      20 7
+    , mkBItem "food"      20 7
+    , mkBItem "insurance" 76 31
+    , mkBItem "phone"     30 31 
+    , mkBItem "climbing"  55 31
+    , mkBItem "mentoring" 7  31
     ]
-  where
-    mkItem d a e r = def
-      & expenseDate .~ rateToDay sDate d
-      & expenseReason .~ r
-      & budgetType .~ Expense e
-      & amount .~ a
-    sDate = fromGregorian 2017 09 01
-
-main = do 
-  putStrLn . show $ getBalancesBetween 0 7 budgetTest
-  putStrLn . show $ getBalancesBetween 0 7 expensesTest 
-  putStrLn . show $ compareBudgetsBetween 0 7 budgetTest expensesTest
+    
+main = currentBudgetBal budgetLoan >>= putStrLn . show 

@@ -231,3 +231,19 @@ compareBudgetsBetween :: (BudgetAtPeriod a, HasBudgetStart (f a), HasBudgetList 
 compareBudgetsBetween start end b1 b2 = [start..end]^..traverse . to compare
   where
     compare p = (getBalanceAtPeriod p b2) - (getBalanceAtPeriod p b1)
+
+getEmptyDate :: (BudgetAtPeriod a, HasBudgetStart (f a), HasBudgetList (f a) a) => f a -> Rate
+getEmptyDate budget = g 0
+    where
+      g n
+        | (f n) <= 0 = n
+        | otherwise = g (n+1)
+      f n = getBalanceAtPeriod (n+1) budget
+
+printBalances :: (BudgetAtPeriod a, HasBudgetStart (f a), HasBudgetList (f a) a) => Rate -> Rate -> f a -> IO ()
+printBalances start end budget = sequence_ $ [start..end]^..traverse . to printBal
+  where
+    printBal d = putStrLn $ 
+         (show d)
+      ++ ": "
+      ++ (show $ getBalanceAtPeriod d budget)
