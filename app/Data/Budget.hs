@@ -11,6 +11,7 @@ module Data.Budget where
 
 import CSV
 import Control.Monad.Catch
+import Control.Exception
 import Control.Lens hiding ((.=))
 import Control.Monad
 import Control.Monad.Fix
@@ -59,7 +60,7 @@ data BudgetStart = BudgetStart
   } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 data BudgetList a = BudgetList
-  { _budgetListStart :: BudgetStart
+  { _budgetListBudgetStart :: BudgetStart
   , _items :: [a]
   } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
@@ -111,6 +112,12 @@ class (HasBudgetAmount a) => HasBudgetList m a | m -> a where
 
 class (HasBudgetAmount a) => BudgetAtPeriod a where
   budgetAtPeriod :: (HasBudgetStart s) => s -> Rate -> Getter a Amount
+
+instance Functor BudgetList where
+  fmap f l = BudgetList 
+    { _budgetListBudgetStart = _budgetListBudgetStart l
+    , _items = fmap f (_items l)
+    }
 
 instance BudgetAtPeriod BudgetItem where
   budgetAtPeriod _ p = to gt
@@ -303,3 +310,35 @@ currentBudgetBal :: (BudgetAtPeriod a, HasBudgetStart (f a), HasBudgetList (f a)
 currentBudgetBal b = do 
   n <- utctDay <$> getCurrentTime 
   return $ getBalanceAtPeriod (dayToRate (b^.startDate) n) b
+
+loadYamlFile :: (FromJSON a) => FilePath -> IO [a]
+loadYamlFile fp = decodeFileEither fp >>= either throwIO return
+
+loadTransactionFile :: FilePath -> IO [Transaction]
+loadTransactionFile = loadCSVFile
+
+loadNewTransactionFile :: 
+  String  -- ^ name of budget to load the transactions to
+  -> FilePath -- ^ file path to the transactions
+  -> IO ()
+loadNewTransactionFile bName fp = loadTransactionFile fp 
+  >>= encodeFile (fp -<.> "yaml") . (transToExpenses bName)
+
+-- converts transaction file to expenses
+transToExpenses :: (Foldable f) => String -> f Transaction -> Expenses
+transToExpenses bname ts = def
+  & name .~ bname
+  & items .~ exps 
+  where
+    exps = toExpense <$> (toList ts)
+    toExpense t = def
+      & expenseDate .~ (t^.tDate)
+      & expenseReason .~ (t^.tDesc)
+      & amount .~ (c - d)
+      & budgetType .~ case (c > 0) of
+        True -> Income
+        _ -> Expense ""
+      where
+        d = t^.tDebit . to num
+        c = t^.tCredit . to num
+        num = maybe 0 id
