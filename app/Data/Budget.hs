@@ -11,7 +11,7 @@ module Data.Budget where
 
 import CSV
 import Control.Monad.Catch
-import Control.Lens
+import Control.Lens hiding ((.=))
 import Control.Monad
 import Control.Monad.Fix
 import Data.Data
@@ -182,35 +182,86 @@ instance Default BudgetItem
 
 instance Default Bank 
 
+instance FromJSON Bank
+
+instance FromJSON BudgetAmount where
+  parseJSON (Object o) = BudgetAmount
+    <$> o .: "amount"
+    <*> o .: "type"
+  parseJSON _ = mempty
+
+instance (FromJSON a) => FromJSON (BudgetList a) where
+  parseJSON v@(Object o) = BudgetList
+    <$> (parseJSON v)
+    <*> o .: "items"
+  parseJSON _ = mempty
+
+instance FromJSON BudgetItem where
+  parseJSON v@(Object o) = BudgetItem 
+    <$> o .: "rate" 
+    <*> (parseJSON v)
+  parseJSON _ = mempty
+
+instance FromJSON BudgetStart where
+  parseJSON (Object o) = BudgetStart
+    <$> o .: "name"
+    <*> o .: "start-date"
+    <*> o .: "start-amount"
+  parseJSON _ = mempty
+
 instance FromJSON BudgetType where
   parseJSON (String s)
     | s == "income" = return Income
     | otherwise = return $ Expense (DT.unpack s)
-  parseJSON _ = fail "Budget type is the wrong yaml type - should be a string"
+  parseJSON _ = mempty
 
-instance FromJSON BudgetAmount
+instance FromJSON ExpenseItem where
+  parseJSON v@(Object o) = ExpenseItem 
+    <$> o .: "date" 
+    <*> o .: "reason"
+    <*> (parseJSON v)
+  parseJSON _ = mempty
 
-instance FromJSON BudgetStart
+instance ToJSON Bank
 
-instance FromJSON ExpenseItem
+instance ToJSON BudgetAmount where
+  toJSON = object . budgetAmountJSON
 
-instance FromJSON BudgetItem
+budgetAmountJSON a =
+    ["amount" .= (a^.amount)
+    ,"type" .= (a^.budgetType)
+    ]
 
-instance FromJSON Bank
+instance (ToJSON a, HasBudgetAmount a) => ToJSON (BudgetList a) where 
+  toJSON b = object $
+    budgetStartJSON (b^.budgetListBudgetStart)
+    ++ ["items" .= toJSON (b^.items)]
 
-instance ToJSON ExpenseItem
+instance ToJSON BudgetItem where
+  toJSON bi = object $ 
+    budgetAmountJSON (bi^.budgetItemBudgetAmount)
+    ++ ["rate" .= (bi^.rate)]
+
+instance ToJSON BudgetStart where
+  toJSON = object . budgetStartJSON
+
+budgetStartJSON b =
+    ["name" .= (b^.name)
+    ,"start-date" .= (b^.startDate)
+    ,"start-amount" .= (b^.startAmount)
+    ]
 
 instance ToJSON BudgetType where
   toJSON Income = String $ DT.pack "income"
   toJSON (Expense s) = String $ DT.pack s
 
-instance ToJSON BudgetItem
 
-instance ToJSON Bank
-
-instance ToJSON BudgetAmount
-
-instance ToJSON BudgetStart
+instance ToJSON ExpenseItem where
+  toJSON ei = object $
+    budgetAmountJSON (ei^.expenseItemBudgetAmount)
+    ++ ["reason" .= (ei^.expenseReason)
+       ,"date" .= (ei^.expenseDate)
+       ]
 
 dayToRate :: Day -> Day -> Rate
 dayToRate s = fromInteger . flip diffDays s
