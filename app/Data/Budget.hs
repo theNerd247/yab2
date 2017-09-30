@@ -79,7 +79,6 @@ data Transaction = Transaction
 data Bank = Bank
   { _checking :: Amount
   , _savings :: Amount
-  , _lastModified :: Rate
   } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 makeLenses ''Transaction
