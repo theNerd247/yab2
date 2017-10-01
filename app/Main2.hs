@@ -3,6 +3,8 @@ module Main where
 import Data.Acid
 import Data.Yaml (encodeFile)
 import Data.Budget
+import Control.Exception
+import Control.Monad.Catch
 import Data.Default (def)
 import Control.Lens
 import Data.Time (utctDay, getCurrentTime, fromGregorian)
@@ -51,6 +53,16 @@ budgetLiving = def
 
 getFromDir d ext = listDirectory d >>= return . fmap (d </>). filter ((==ext) . takeExtension)
 
+data NoNameException = NoNameException String
+  deriving (Eq,Ord,Show,Read)
+
+instance Exception NoNameException
+
+guardNoName :: FilePath -> Expenses -> IO a -> IO a
+guardNoName f e m
+  | e^.name == "" = throwM . NoNameException $ "You need to name the expenses! Not merging: " ++ f
+  | otherwise = m
+
 main = do
   -- open database
   db <- openLocalStateFrom "expenses-acid" ([] :: ExpensesDB)
@@ -62,15 +74,23 @@ main = do
   forM newTransactionFiles $ \f -> do 
     loadNewTransactionFile "" f
     putStrLn $ "Expenses file ready! " ++ (f -<.> "yaml")
+  -- force insert merged transactions
+  forceMergeFiles <- getFromDir "transactions" "_merge.yaml"
+  forM forceMergeFiles $ \f -> do
+    e <- loadYamlFile f
+    guardNoName f e $ do
+      update db . InsertExpenses $ e
+      putStrLn $ "Force merged expenses in: " ++ f
   -- upsert new expenses files
   forM newExpensesFiles $ \f -> do 
     e <- loadYamlFile f :: IO Expenses
-    dups <- update db . UpsertExpenses $ e
-    case dups of
-      [] -> putStrLn $ f ++ " Successfully loaded!"
-      _ -> do
-        putStrLn $ "You have duplicate expenses in: " ++ f
-        putStrLn $ "I've merged the unique entries for you...you'll find the duplicates in: " ++ dupsFP
-        encodeFile dupsFP (e & items .~ dups)
-        where
-          dupsFP = ((f -<.> "") ++ "_dups.yaml")    
+    guardNoName f e $ do
+      dups <- update db . UpsertExpenses $ e
+      case dups of
+        [] -> putStrLn $ f ++ " Successfully loaded!"
+        _ -> do
+          putStrLn $ "You have duplicate expenses in: " ++ f
+          putStrLn $ "I've merged the unique entries for you...you'll find the duplicates in: " ++ dupsFP
+          encodeFile dupsFP (e & items .~ dups)
+          where
+            dupsFP = ((f -<.> "") ++ "_dups.yaml")    
