@@ -6,20 +6,28 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Data.Budget where
 
 import CSV
-import Control.Monad.Catch
 import Control.Exception
 import Control.Lens hiding ((.=))
 import Control.Monad
+import Control.Monad.Catch
 import Control.Monad.Fix
+import Control.Monad.Reader (ask)
+import Control.Monad.State (get,put,modify)
+import Data.Acid
 import Data.Data
-import Data.Foldable
+import Data.Data.Lens
 import Data.Default
+import Data.Foldable
 import Data.Monoid
+import Data.SafeCopy
 import Data.Time
+import Data.Traversable (forM)
 import Data.Yaml hiding ((.~))
 import GHC.Generics hiding (to)
 import System.FilePath.Posix
@@ -81,6 +89,10 @@ data Bank = Bank
   , _savings :: Amount
   } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
+type ExpensesDB = [Expenses]
+
+makeLenses ''Bank
+
 makeLenses ''Transaction
 
 makeClassy ''BudgetStart
@@ -89,7 +101,17 @@ makeClassy ''BudgetItem
 
 makeClassy ''ExpenseItem
 
-makeLenses ''Bank
+$(deriveSafeCopy 0 'base ''BudgetType)
+
+$(deriveSafeCopy 0 'base ''BudgetAmount)
+
+$(deriveSafeCopy 0 'base ''BudgetItem)
+
+$(deriveSafeCopy 0 'base ''ExpenseItem)
+
+$(deriveSafeCopy 0 'base ''BudgetStart)
+
+$(deriveSafeCopy 0 'base ''BudgetList)
 
 class HasBudgetAmount a where
   budgetAmount :: Lens' a BudgetAmount
@@ -100,7 +122,7 @@ class HasBudgetAmount a where
   budgetType :: Lens' a BudgetType
   budgetType = budgetAmount . budgetType
 
-class (HasBudgetAmount a) => HasBudgetList m a | m -> a where
+class HasBudgetList m a | m -> a where
   budgetList :: Lens' m (BudgetList a)
 
   items :: Lens' m [a]
@@ -152,7 +174,7 @@ instance HasBudgetAmount BudgetAmount where
         }
       gt = _budgetType
 
-instance (HasBudgetAmount a) => HasBudgetList (BudgetList a) a where
+instance HasBudgetList (BudgetList a) a where
   budgetList = id
   items = budgetList . go where go f (BudgetList s l) = (\l' -> BudgetList s l') <$> f l
   budgetListBudgetStart = budgetList . go where go f (BudgetList s l) = (\s' -> BudgetList s' l) <$> f s
@@ -310,7 +332,7 @@ currentBudgetBal b = do
   n <- utctDay <$> getCurrentTime 
   return $ getBalanceAtPeriod (dayToRate (b^.startDate) n) b
 
-loadYamlFile :: (FromJSON a) => FilePath -> IO [a]
+loadYamlFile :: (FromJSON a) => FilePath -> IO a
 loadYamlFile fp = decodeFileEither fp >>= either throwIO return
 
 loadTransactionFile :: FilePath -> IO [Transaction]
@@ -341,3 +363,41 @@ transToExpenses bname ts = def
         d = t^.tDebit . to num
         c = t^.tCredit . to num
         num = maybe 0 id
+
+queryExpenses :: String -> Query ExpensesDB (Maybe Expenses)
+queryExpenses eName = ask >>= return . findOf folded (^.name.to (==eName))
+
+insertExpenses :: Expenses -> Update ExpensesDB ()
+insertExpenses newE = do
+  e <- uses id $ findOf folded (^.name.to (==newE^.name))
+  maybe (id %= (newE:)) (\x -> id %= updateAt (^.name.to(==x^.name)) (x & items .~ newE^.items ++ x^.items)) e
+
+upsertExpenses :: Expenses -> Update ExpensesDB [ExpenseItem]
+upsertExpenses newE = do
+  -- find the cooresponding expense
+  e <- uses id $ findOf folded (^.name.to (==newE^.name))
+  -- if the expense doesn't exist then append it, otherwise attempt a
+  -- merge.
+  maybe (id %= (newE:) >> return []) (upsertEs . (mergeExpenses newE)) e
+  where
+    upsertEs (mergedEs, dups) = do
+      id %= updateAt (^.name.to(==newE^.name)) mergedEs
+      return dups
+
+updateAt :: (a -> Bool) -> a -> [a] -> [a]
+updateAt p x xs = maybe xs (\i -> xs & element i .~ x) (DL.findIndex p xs)
+
+mergeExpenses :: Expenses -> Expenses -> (Expenses, [ExpenseItem])
+mergeExpenses xs ys = (xs & items .~ merged^._1, merged^._2)
+  where
+    merged = mergeDups isDuplicate (xs^.items) (ys^.items)
+    isDuplicate a b = (a^.expenseDate == b^.expenseDate) && (a^.amount == b^.amount)
+
+mergeDups :: (a -> a -> Bool) -> [a] -> [a] -> ([a],[a])
+mergeDups pred as bs = foldr merged (bs,[]) as
+  where
+    merged x kept
+      | any (pred x) (kept^._1) = kept & _2 %~ (x:)
+      | otherwise = kept & _1 %~ (x:)
+
+$(makeAcidic ''ExpensesDB ['queryExpenses, 'upsertExpenses, 'insertExpenses])

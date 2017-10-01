@@ -1,9 +1,14 @@
 module Main where
 
+import Data.Acid
+import Data.Yaml (encodeFile)
 import Data.Budget
 import Data.Default (def)
 import Control.Lens
 import Data.Time (utctDay, getCurrentTime, fromGregorian)
+import System.Directory
+import System.FilePath
+import Data.Traversable (forM)
 
 income = 1730.77 :: Amount
 loanAmount = 11352.14 :: Amount
@@ -43,5 +48,29 @@ budgetLiving = def
     , mkBItem "climbing"  55 31
     , mkBItem "mentoring" 7  31
     ]
-    
-main = currentBudgetBal budgetLoan >>= putStrLn . show 
+
+getFromDir d ext = listDirectory d >>= return . fmap (d </>). filter ((==ext) . takeExtension)
+
+main = do
+  -- open database
+  db <- openLocalStateFrom "expenses-acid" ([] :: ExpensesDB)
+  -- search for new transaction files
+  newTransactionFiles <- getFromDir "transactions" ".csv"
+  -- search for new expenses files
+  newExpensesFiles <- getFromDir "transactions" ".yaml"
+  -- convert and save the new transactions so we can add reasons
+  forM newTransactionFiles $ \f -> do 
+    loadNewTransactionFile "" f
+    putStrLn $ "Expenses file ready! " ++ (f -<.> "yaml")
+  -- upsert new expenses files
+  forM newExpensesFiles $ \f -> do 
+    e <- loadYamlFile f :: IO Expenses
+    dups <- update db . UpsertExpenses $ e
+    case dups of
+      [] -> putStrLn $ f ++ " Successfully loaded!"
+      _ -> do
+        putStrLn $ "You have duplicate expenses in: " ++ f
+        putStrLn $ "I've merged the unique entries for you...you'll find the duplicates in: " ++ dupsFP
+        encodeFile dupsFP (e & items .~ dups)
+        where
+          dupsFP = ((f -<.> "") ++ "_dups.yaml")    

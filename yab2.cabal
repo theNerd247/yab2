@@ -21,12 +21,14 @@ executable yab2
   build-depends:       base
                      , acid-state
                      , bytestring
-                     , exceptions
                      , cassava
-                     , data-default
+                     , directory
                      , containers
+                     , data-default
+                     , exceptions
                      , filepath
                      , lens
+                     , mtl
                      , safecopy
                      , text
                      , time
