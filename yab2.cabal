@@ -19,13 +19,17 @@ executable yab2
                      , CSV
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
+                     , acid-state
                      , bytestring
-                     , exceptions
                      , cassava
-                     , data-default
+                     , directory
                      , containers
+                     , data-default
+                     , exceptions
                      , filepath
                      , lens
+                     , mtl
+                     , safecopy
                      , text
                      , time
                      , vector
