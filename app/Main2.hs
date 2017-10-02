@@ -65,6 +65,9 @@ guardNoName f e m
 
 prefixOf n = reverse . take n . reverse
 
+backupFile :: FilePath -> IO ()
+backupFile f = renameFile f (f <.> ".bak")
+
 main = do
   -- open database
   db <- openLocalStateFrom "expenses-acid" ([] :: ExpensesDB)
@@ -75,7 +78,7 @@ main = do
   -- convert and save the new transactions so we can add reasons
   forM newTransactionFiles $ \f -> do 
     loadNewTransactionFile "" f
-    renameFile f (f <.> ".bak")
+    backupFile f
     putStrLn $ "Expenses file ready! " ++ (f -<.> "yaml")
   -- force insert merged transactions
   forceMergeFiles <- getFromDir "transactions" ".yaml" >>= return . filter ((=="_merge.yaml") . prefixOf 11)
@@ -84,7 +87,7 @@ main = do
     guardNoName f e $ do
       update db . InsertExpenses $ e
       putStrLn $ "Force merged expenses in: " ++ f
-      renameFile f (f <.> ".bak")
+      backupFile f
   -- upsert new expenses files
   forM newExpensesFiles $ \f -> do 
     e <- loadYamlFile f :: IO Expenses
@@ -100,4 +103,4 @@ main = do
           encodeFile dupsFP (e & items .~ dups)
           where
             dupsFP = ((f -<.> "") ++ "_dups.yaml")    
-      renameFile f (f <.> ".bak")
+    backupFile f
