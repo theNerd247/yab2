@@ -77,9 +77,9 @@ main = do
   newExpensesFiles <- getFromDir "transactions" ".yaml" >>= return . filter ((\x -> x/="merge.yaml" && x/="_dups.yaml") . prefixOf 10)
   -- convert and save the new transactions so we can add reasons
   forM newTransactionFiles $ \f -> do 
-    loadNewTransactionFile "" f
+    efp <- loadNewTransactionFile "" f
     backupFile f
-    putStrLn $ "Expenses file ready! " ++ (f -<.> "yaml")
+    putStrLn $ "Expenses file ready! " ++ (efp -<.> "yaml")
   -- force insert merged transactions
   forceMergeFiles <- getFromDir "transactions" ".yaml" >>= return . filter ((=="_merge.yaml") . prefixOf 11)
   forM forceMergeFiles $ \f -> do

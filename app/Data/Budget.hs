@@ -341,9 +341,17 @@ loadTransactionFile = loadCSVFile
 loadNewTransactionFile :: 
   String  -- ^ name of budget to load the transactions to
   -> FilePath -- ^ file path to the transactions
-  -> IO ()
-loadNewTransactionFile bName fp = loadTransactionFile fp 
-  >>= encodeFile (fp -<.> "yaml") . (transToExpenses bName)
+  -> IO FilePath
+loadNewTransactionFile bName fp = do 
+  e <- loadTransactionFile fp >>= return . (transToExpenses bName)
+  let newFP = takeDirectory fp </> (eFP e)
+  encodeFile newFP e
+  return newFP
+  where
+    eFP e =  (show $ startD^.expenseDate) ++ "_" ++ (show $ endD^.expenseDate) ++ ".yaml"
+      where
+        startD = DL.minimumBy (\a b -> compare (a^.expenseDate) (b^.expenseDate)) $ e^.items
+        endD = DL.maximumBy (\a b -> compare (a^.expenseDate)  (b^.expenseDate)) $ e^.items
 
 -- converts transaction file to expenses
 transToExpenses :: (Foldable f) => String -> f Transaction -> Expenses
