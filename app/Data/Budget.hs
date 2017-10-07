@@ -20,6 +20,7 @@ import Control.Monad.Fix
 import Control.Monad.Reader (ask)
 import Control.Monad.State (get,put,modify)
 import Data.Acid
+import Data.DayDefault
 import Data.Data
 import Data.Data.Lens
 import Data.Default
@@ -194,9 +195,6 @@ instance CSV.ToRecord Transaction
 
 instance Default BudgetType where
   def = Income
-
-instance Default Day where
-  def = fromGregorian 0 0 0
 
 instance Default BudgetStart
 

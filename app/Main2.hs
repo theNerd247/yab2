@@ -10,6 +10,7 @@ import Control.Lens hiding ((<.>))
 import Data.Time (utctDay, getCurrentTime, fromGregorian)
 import System.Directory
 import System.FilePath
+import Data.History
 import Data.Traversable (forM)
 
 income = 1730.77 :: Amount

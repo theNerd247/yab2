@@ -17,6 +17,10 @@ executable yab2
   main-is:             Main2.hs
   other-modules:       Data.Budget
                      , CSV
+                     , Data.Budget
+                     , Data.BID
+                     , Data.DayDefault
+                     , Data.History
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , acid-state
@@ -27,6 +31,7 @@ executable yab2
                      , data-default
                      , exceptions
                      , filepath
+                     , hashable
                      , lens
                      , mtl
                      , safecopy
