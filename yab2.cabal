@@ -31,6 +31,7 @@ executable yab2
                      , data-default
                      , exceptions
                      , filepath
+                     , ixset
                      , hashable
                      , lens
                      , mtl
