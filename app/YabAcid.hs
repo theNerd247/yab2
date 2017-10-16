@@ -52,7 +52,20 @@ addBList bs = updateYabDB budgetDB (listToDB bs)
 addBAudit :: (Audit BudgetItem) -> Update YabAcid ()
 addBAudit = addAuditItem budgetAuditDB
 
-$(makeAcidic ''YabAcid ['addEList,'addEAudit,'addBList, 'addBAudit])
+insertE :: ExpenseItem -> Update YabAcid ()
+insertE e = expenseDB %= insert e
+
+insertB :: BudgetItem -> Update YabAcid ()
+insertB e = budgetDB %= insert e
+
+upsertEs :: ExpenseList -> Update YabAcid [[ExpenseItem]]
+upsertEs es = do 
+  db <- use expenseDB
+  let (db,dups) = upsertExpenses (es^.items) db
+  updateYabDB expenseDB db
+  return dups
+
+$(makeAcidic ''YabAcid ['addEList,'addEAudit,'addBList, 'addBAudit,'upsertEs])
 
 withEAudit :: (MonadIO m) => YabAcidState -> ExpenseItem -> m ()
 withEAudit db e = do 
@@ -64,6 +77,7 @@ withBAudit db e = do
   hist <- makeAudit e
   update' db $ AddBAudit hist
 
+-- inserts a list of expense items into the db and adds audits to the expenses
 addExpenseList :: (MonadIO m) => YabAcidState -> ExpenseList -> m ()
 addExpenseList db es = do
   update' db $ AddEList es
@@ -73,3 +87,6 @@ addBudgetList :: (MonadIO m) => YabAcidState -> BudgetList -> m ()
 addBudgetList db es = do
   update' db $ AddBList es
   forM_ (es^.items) (withBAudit db)
+
+upsertExpenseList :: (MonadIO m) => YabAcidState -> ExpenseList -> m [[ExpenseItem]]
+upsertExpenseList db es = update' db $ UpsertEs es

@@ -101,17 +101,19 @@ instance ToJSON ExpenseItem where
 {-insertExpense :: ExpenseItem -> Update ExpensesDB ()-}
 {-insertExpense e = expensesDB %= union-}
 
-{-upsertExpenses :: Expenses -> Update ExpensesDB [ExpenseItem]-}
-{-upsertExpenses newE = do-}
-  {--- find the cooresponding expense-}
-  {-e <- uses expensesDB $ findOf folded (^.name.to (==newE^.name))-}
-  {--- if the expense doesn't exist then append it, otherwise attempt a-}
-  {--- merge.-}
-  {-maybe (expensesDB %= (newE:) >> return []) (upsertEs . (mergeExpenses newE)) e-}
-  {-where-}
-    {-upsertEs (mergedEs, dups) = do-}
-      {-expensesDB %= updateAt (^.name.to(==newE^.name)) mergedEs-}
-      {-return dups-}
+upsertExpenses :: [ExpenseItem] -> ExpenseDB -> (ExpenseDB,[[ExpenseItem]])
+upsertExpenses es db = foldr upsertE (db,[]) es
+  where
+    upsertE e (db,dups) = either (\x -> (x,[])) (\x -> (db,x:dups)) $ upsertExpense e db
+
+upsertExpense :: ExpenseItem -> ExpenseDB -> Either ExpenseDB [ExpenseItem]
+upsertExpense e db = upsertExpense' e db (expenseDuplicates e db)
+  where
+    upsertExpense' e db [] = Left $ insert e db
+    upsertExpense' e _ dups = Right $ e : dups
+
+expenseDuplicates :: ExpenseItem -> ExpenseDB -> [ExpenseItem]
+expenseDuplicates e db = toList $ db @= (e^.expenseDate) @= (e^.amount)
 
 {-updateAt :: (a -> Bool) -> a -> [a] -> [a]-}
 {-updateAt p x xs = maybe xs (\i -> xs & element i .~ x) (DL.findIndex p xs)-}
