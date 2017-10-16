@@ -1,33 +1,21 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
 
 module Data.BID where
 
-import GHC.Generics hiding (to)
-import Data.Data
 import Data.Time.Clock.POSIX
-import Data.Default
-import Control.Lens hiding ((.=))
+import Control.Lens
 import Data.Hashable
 
-data BID = BID
-  { _bid :: !Int
-  } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+type BID = Int
 
-makeClassy ''BID
+class HasBID a where
+  bid :: Lens' a BID
 
-instance Default BID
+instance HasBID BID where
+  bid = id
 
 instance Hashable POSIXTime where
   hashWithSalt = hashUsing fromEnum 
 
 newBID :: IO BID
-newBID = hash <$> getPOSIXTime >>= return . (\x -> def & bid .~ x)
+newBID = hash <$> getPOSIXTime

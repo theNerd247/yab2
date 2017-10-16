@@ -1,17 +1,39 @@
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ExistentialQuantification #-}
+
 module Main where
 
 import Data.Acid
-import Data.Yaml (encodeFile)
+import Data.Acid.Abstract
 import Data.Budget
 import Control.Exception
 import Control.Monad.Catch
 import Data.Default (def)
 import Control.Lens hiding ((<.>))
-import Data.Time (utctDay, getCurrentTime, fromGregorian)
 import System.Directory
 import System.FilePath
-import Data.History
+import Data.Audit
+import Data.SafeCopy
 import Data.Traversable (forM)
+import Control.Monad.Reader.Class
+import Control.Monad.State.Class
+import Control.Monad.IO.Class
+
+data YabAcid = YabAcid
+  { _budgetDB :: BudgetDB
+  , _budgetAuditDB :: BudgetAuditDB
+  , _expenseDB :: ExpenseDB
+  , _expenseAuditDB :: ExpenseAuditDB
+  }
 
 income = 1730.77 :: Amount
 loanAmount = 11352.14 :: Amount
@@ -23,7 +45,7 @@ mkBItem e a r = (def :: BudgetItem)
     & rate .~ r 
     & amount .~ a
 
-budgetLoan :: Budget
+budgetLoan :: BudgetList
 budgetLoan = def 
   & name .~ "Loan"
   & startDate .~ fromGregorian 2017 09 01
@@ -33,7 +55,7 @@ budgetLoan = def
     ]
   where
 
-budgetLiving :: Budget
+budgetLiving :: BudgetList
 budgetLiving = def
   & name .~ "Living"
   & startDate .~ fromGregorian 2017 09 01
@@ -59,7 +81,7 @@ data NoNameException = NoNameException String
 
 instance Exception NoNameException
 
-guardNoName :: FilePath -> Expenses -> IO a -> IO a
+guardNoName :: (HasName n) => FilePath -> n -> IO a -> IO a
 guardNoName f e m
   | e^.name == "" = throwM . NoNameException $ "You need to name the expenses! Not merging: " ++ f
   | otherwise = m

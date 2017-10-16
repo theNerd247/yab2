@@ -8,12 +8,15 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Data.Budget.Internal where
 
 import Control.Lens hiding ((.=),Indexable)
 import Control.Monad.Reader (asks)
 import Control.Monad.State (get,put,modify)
+import Control.Monad.Reader.Class
+import Control.Monad.State.Class
 import Data.Acid
 import Data.Data
 import Data.Default
@@ -241,27 +244,27 @@ currentBudgetBal b = do
   n <- utctDay <$> getCurrentTime
   return $ getBalanceAtPeriod (dayToRate (b^.startDate) n) b
 
-queryYabDB :: (HasYabDB (f a) a) => Query (f a) (YabDB a)
+queryYabDB :: (HasYabDB s a, MonadReader s m) => m (YabDB a)
 queryYabDB = asks $ view yabDB
 
-updateYabDB :: (HasYabDB (f a) a) => (YabDB a) -> Update (f a) (YabDB a)
+updateYabDB :: (HasYabDB s a, MonadState s m) => (YabDB a) -> m (YabDB a)
 updateYabDB db = assign yabDB db >> return db
 
-queryYabList :: (HasYabList (f a) a) => Query (f a) (YabList a)
-queryYabList = asks $ view yabList
-
-updateYabList :: (HasYabList (f a) a) => (YabList a) -> Update (f a) (YabList a)
-updateYabList l = assign yabList l >> return l
-
-queryDBItems :: (HasYabDB (f a) a) => (YabDB a -> YabDB a) -> Query (f a) (YabDB a)
+queryDBItems :: (HasYabDB s a, MonadReader s m) => (YabDB a -> YabDB a) -> m (YabDB a)
 queryDBItems f = asks $ view (yabDB.to f)
 
 -- updates each element by the given key using updateIx
-updateDBItems :: (HasYabDB (f a) a, Typeable a, Typeable k, Ord a, Indexable a) => k -> [a] -> Update (f a) ()
+updateDBItems :: (HasYabDB s a, MonadState s m, Ord a, Indexable a, Typeable k, Typeable a) => k -> [a] -> m ()
 updateDBItems key values = yabDB %= (appEndo (foldMap (Endo . updateIx key) values))
 
+queryYabList :: (HasYabList s a, MonadReader s m) => m (YabList a)
+queryYabList = asks $ view yabList
+
+updateYabList ::(HasYabList s a, MonadState s m) => (YabList a) -> m (YabList a)
+updateYabList l = assign yabList l >> return l
+
 -- runs a query that preserves the index of the elements found
-queryListItems :: (HasYabList (f a) a) => (a -> Bool) -> Query (f a) (YabList (Int,a))
+queryListItems :: (HasYabList s a, MonadReader s m) =>  (a -> Bool) -> m (YabList (Int,a))
 queryListItems pred = do 
   db <- asks $ view yabList
   return $ YabList 
@@ -270,7 +273,7 @@ queryListItems pred = do
     }
 
 -- updates each element by the given key using updateIx
-updateListItems :: (HasYabList (f a) a) => [(Int,a)] -> Update (f a) (YabList a)
+updateListItems :: (HasYabList s a, MonadState s m) => [(Int,a)] -> m (YabList a)
 updateListItems values = do 
   yabList.items %= (appEndo (foldMap (Endo . upsert) values))
   use yabList
@@ -278,6 +281,3 @@ updateListItems values = do
     upsert (i,x) xs
       | i < 0 = xs
       | otherwise = xs & element i .~ x
-
--- $(makeAcidic ''YabDB ['queryYabDB, 'updateYabDB, 'queryDBItems, 'updateDBItems])
--- $(makeAcidic ''YabList ['queryYabList, 'updateYabList, 'queryListItems, 'updateListItems])
