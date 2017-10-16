@@ -85,14 +85,11 @@ makeAudit x = liftIO $ do
     , _modData = x
     }
 
-queryAuditDB :: (HasAuditDB h s, MonadReader h m) => m (AuditDB s)
-queryAuditDB = asks $ view auditDB
+queryAuditDB :: (HasAuditDB r a, MonadReader h m) => Lens' h r -> m (AuditDB a)
+queryAuditDB l = asks $ view (l.auditDB)
 
-updateAuditDB :: (HasAuditDB h s, MonadState h m) => AuditDB s -> m ()
-updateAuditDB = modify . (set auditDB)
+updateAuditDB :: (HasAuditDB r s, MonadState h m) => Lens' h r -> AuditDB s -> m ()
+updateAuditDB l db = assign (l.auditDB) db
 
-addAuditItem :: (HasAuditDB s a, MonadState s m, Typeable a, Ord a) => (Audit a) -> m ()
-addAuditItem x = auditDB %= (insert x)
-
-getByBID :: (MonadReader (f a) m, HasBID a, HasBID b, Foldable f) => b -> m (Maybe a)
-getByBID abid = asks $ findOf folded (^.bid.to (==abid^.bid))
+addAuditItem :: (HasAuditDB r a, MonadState s m, Typeable a, Ord a) => Lens' s r -> (Audit a) -> m ()
+addAuditItem l x = l.auditDB %= (insert x)

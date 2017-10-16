@@ -24,6 +24,7 @@ executable yab2
                      , Data.Budget.Internal
                      , Data.BID
                      , Data.DayDefault
+                     , YabAcid
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , acid-state

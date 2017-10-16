@@ -38,6 +38,8 @@ type Name = String
 
 type YabDB = IxSet 
 
+type StartInfoDB = YabDB StartInfo
+
 data AmountType = 
     Income 
   | Expense String
@@ -172,6 +174,13 @@ instance HasYabList (YabList a) a where
 instance HasStartInfo (YabList a) where
   startInfo = yabListStartInfo
 
+instance Indexable StartInfo where
+  empty = ixSet 
+    [ ixFun $ (:[]) . (view name)
+    , ixFun $ (:[]) . (view startDate)
+    , ixFun $ (:[]) . (view startAmount)
+    ]
+
 instance ToJSON BudgetAmount where
   toJSON = object . budgetAmountJSON
 
@@ -197,6 +206,9 @@ budgetStartJSON b =
     ,"start-date" .= (b^.startDate)
     ,"start-amount" .= (b^.startAmount)
     ]
+
+listToDB :: (Typeable a, Ord a, Indexable a) => YabList a -> YabDB a
+listToDB = fromList . (view items)
 
 dayToRate :: Day -> Day -> Rate
 dayToRate s = fromInteger . flip diffDays s
@@ -244,39 +256,37 @@ currentBudgetBal b = do
   n <- utctDay <$> getCurrentTime
   return $ getBalanceAtPeriod (dayToRate (b^.startDate) n) b
 
-queryYabDB :: (HasYabDB s a, MonadReader s m) => m (YabDB a)
-queryYabDB = asks $ view yabDB
+queryYabDB :: (HasYabDB r a, MonadReader s m) => Lens' s r -> m (YabDB a)
+queryYabDB l = asks $ view (l.yabDB)
 
-updateYabDB :: (HasYabDB s a, MonadState s m) => (YabDB a) -> m (YabDB a)
-updateYabDB db = assign yabDB db >> return db
+updateYabDB :: (HasYabDB r a, MonadState s m) => Lens' s r -> (YabDB a) -> m ()
+updateYabDB l db = assign (l.yabDB) db
 
-queryDBItems :: (HasYabDB s a, MonadReader s m) => (YabDB a -> YabDB a) -> m (YabDB a)
-queryDBItems f = asks $ view (yabDB.to f)
+queryDBItems :: (HasYabDB r a, MonadReader s m) => Lens' s r -> (YabDB a -> YabDB a) -> m (YabDB a)
+queryDBItems l f = asks $ view (l.yabDB.to f)
 
 -- updates each element by the given key using updateIx
-updateDBItems :: (HasYabDB s a, MonadState s m, Ord a, Indexable a, Typeable k, Typeable a) => k -> [a] -> m ()
-updateDBItems key values = yabDB %= (appEndo (foldMap (Endo . updateIx key) values))
+updateDBItems :: (HasYabDB r a, MonadState s m, Ord a, Indexable a, Typeable k, Typeable a) => Lens' s r -> k -> [a] -> m ()
+updateDBItems l key values = l.yabDB %= (appEndo (foldMap (Endo . updateIx key) values))
 
-queryYabList :: (HasYabList s a, MonadReader s m) => m (YabList a)
-queryYabList = asks $ view yabList
+queryYabList :: (HasYabList r a, MonadReader s m) => Lens' s r -> m (YabList a)
+queryYabList l = asks $ view (l.yabList)
 
-updateYabList ::(HasYabList s a, MonadState s m) => (YabList a) -> m (YabList a)
-updateYabList l = assign yabList l >> return l
+updateYabList :: (HasYabList r a, MonadState s m) => Lens' s r -> (YabList a) -> m ()
+updateYabList le l = assign (le.yabList) l
 
 -- runs a query that preserves the index of the elements found
-queryListItems :: (HasYabList s a, MonadReader s m) =>  (a -> Bool) -> m (YabList (Int,a))
-queryListItems pred = do 
-  db <- asks $ view yabList
+queryListItems :: (HasYabList r a, MonadReader s m) =>  Lens' s r -> (a -> Bool) -> m (YabList (Int,a))
+queryListItems l pred = do 
+  db <- asks $ view (l.yabList)
   return $ YabList 
     { _yabListStartInfo = db^.startInfo
     , _items = itoListOf (items.folded.filtered pred) db
     }
 
 -- updates each element by the given key using updateIx
-updateListItems :: (HasYabList s a, MonadState s m) => [(Int,a)] -> m (YabList a)
-updateListItems values = do 
-  yabList.items %= (appEndo (foldMap (Endo . upsert) values))
-  use yabList
+updateListItems :: (HasYabList r a, MonadState s m) => Lens' s r -> [(Int,a)] -> m ()
+updateListItems l values = l.yabList.items %= (appEndo (foldMap (Endo . upsert) values))
   where
     upsert (i,x) xs
       | i < 0 = xs
