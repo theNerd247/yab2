@@ -26,6 +26,7 @@ import Data.Traversable (forM)
 import Data.Yaml hiding ((.~))
 import GHC.Generics hiding (to)
 import System.FilePath.Posix
+import Control.Monad.IO.Class
 import qualified Data.Csv as CSV
 import qualified Data.List as DL
 import qualified Data.Text as DT
@@ -61,30 +62,35 @@ loadYamlFile fp = decodeFileEither fp >>= either throwIO return
 loadTransactionFile :: FilePath -> IO [Transaction]
 loadTransactionFile = loadCSVFile
 
-loadNewTransactionFile :: 
+loadNewTransactionFile :: (MonadIO m)
   String  -- ^ name of budget to load the transactions to
   -> FilePath -- ^ file path to the transactions
-  -> IO FilePath
+  -> m FilePath
 loadNewTransactionFile bName fp = do 
-  e <- loadTransactionFile fp >>= return . transToExpenses
+  e <- loadTransactionFile fp >>= transToExpenses
   let newFP = takeDirectory fp </> (eFP e)
   encodeFile newFP e
   return newFP
   where
-    transToExpenses ts = def & name .~ bname & items .~ (ts^.to toExpense)
+    transToExpenses ts = do 
+      newEs <- mapMOf items toExpense ts
+      return $ def & name .~ bname & items .~ newEs
     eFP e = (show $ startD^.expenseDate) ++ "_" ++ (show $ endD^.expenseDate) ++ ".yaml"
       where
         startD = DL.minimumBy (\a b -> compare (a^.expenseDate) (b^.expenseDate)) $ e^.items
         endD = DL.maximumBy (\a b -> compare (a^.expenseDate)  (b^.expenseDate)) $ e^.items
 
-toExpense :: (HasTransaction t) => t -> ExpenseItem
-toExpense t = def
-  & expenseDate .~ (t^.tDate)
-  & expenseReason .~ (t^.tDesc)
-  & amountType .~ case (c > 0) of
-    True -> Income
-    _ -> Expense ""
-  & amount .~ (c - d)
+toExpense :: (HasTransaction t, MonadIO m) => t -> m ExpenseItem
+toExpense t = do 
+  bd <- newBID
+  return $ def
+    & bid .~ bd
+    & expenseDate .~ (t^.tDate)
+    & expenseReason .~ (t^.tDesc)
+    & amountType .~ case (c > 0) of
+      True -> Income
+      _ -> Expense ""
+    & amount .~ (c - d)
   where
     d = t^.tDebit . to num
     c = t^.tCredit . to num
