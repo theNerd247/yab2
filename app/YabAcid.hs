@@ -20,7 +20,7 @@ import Data.IxSet
 import Data.Time (Day)
 import Data.Data
 import Data.Default
-import Data.Budget hiding (upsertExpenses)
+import Data.Budget
 import Data.SafeCopy
 import Data.Default.IxSet
 import GHC.Generics
@@ -30,7 +30,6 @@ import Control.Monad.State.Class
 import Control.Monad.IO.Class
 import Data.Foldable (forM_,fold)
 import Data.Traversable (forM)
-import qualified Data.Budget.Expense as DBE
 import qualified Data.Map as DM
 import qualified Data.List as DL
 
@@ -75,11 +74,11 @@ upsertEs es = do
   return $ fold dups
   where 
     upsertEs' db es = do
-      let (newDB,dups) = DBE.upsertExpenses es smallDB
+      let (newDB,dups) = upsertExpenses es smallDB
       updateYabDB expenseDB (db `union` newDB)
       return dups
       where
-        smallDB = db @>=<= (earliestExpense es, latestExpense es)
+        smallDB = db @>=<= ((earliestExpense es)^.expenseDate, (latestExpense es)^.expenseDate)
     exs = DL.groupBy (\a b -> a^.name == b^.name) . DL.sortBy (\a b -> compare (a^.name) (b^.name)) $ es
 
 querySInfo :: Name -> Query YabAcid (Maybe StartInfo)
@@ -135,7 +134,7 @@ addBudgetList db es = do
   update' db $ AddBList es
   forM_ (es^.items) (withBAudit db)
 
-upsertExpenses db = update' db . UpsertEs
+mergeExpenses db = update' db . UpsertEs
 
 getBudgetyName db  = query' db . GetBByName
 

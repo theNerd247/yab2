@@ -5,4 +5,4 @@ import Data.Data
 import Data.Default
 
 instance (Indexable a, Ord a, Typeable a) => Default (IxSet a) where
-  def = fromList []
+  def = empty

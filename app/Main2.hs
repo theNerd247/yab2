@@ -14,8 +14,9 @@ module Main where
 
 import Data.Acid
 import Data.Acid.Abstract
-import Data.Budget
+import Data.Budget hiding (upsertExpenses)
 import Data.Bank
+import Data.IxSet
 import YabAcid
 import Control.Exception
 import Control.Monad.Catch
@@ -86,9 +87,21 @@ import Control.Monad.IO.Class
 {-backupFile :: FilePath -> IO ()-}
 {-backupFile f = renameFile f (f <.> ".bak")-}
 
-main = return ()
+loadDB = openLocalStateFrom "tst" (def :: YabAcid)
+
+main = do
+  db <- loadDB
+  f <- loadNewTransactionFile "tst" "./transactions/tst.csv"
+  es <- loadYamlFile f
+  putStrLn $ "Original Length: " ++ (show . length $ es)
+  putStrLn . show . (view expenseDate) $ earliestExpense es
+  putStrLn . show . (view expenseDate) $ latestExpense es
+  dups <- mergeExpenses db es
+  putStrLn . show . length $ dups
+  es2 <- getExpensesByName db "tst"
+  putStrLn . show . stats $ es2
+  closeAcidState db
   -- open database
-  {-db <- openLocalStateFrom "expenses-acid" ([] :: ExpensesDB)-}
   {--- search for new transaction files-}
   {-newTransactionFiles <- getFromDir "transactions" ".csv"-}
   {--- search for new expenses files-}
