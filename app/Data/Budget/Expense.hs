@@ -16,15 +16,16 @@ import Data.Audit
 import Data.Acid
 import Data.BID
 import Data.Budget.Internal
+import Data.Default.IxSet
 import Data.Data
-import Data.DayDefault
+import Data.Default.Time
 import Data.Default
 import Data.IxSet
 import Data.SafeCopy
 import Data.Time
 import GHC.Generics hiding (to)
 import Data.Yaml hiding ((.~))
-import qualified Data.Text as DT
+import qualified Data.List as DL
 import qualified Data.Text as DT
 
 data ExpenseItem = ExpenseItem
@@ -92,41 +93,30 @@ instance ToJSON ExpenseItem where
        , "name" .= (ei^.name)
        ]
 
-{-queryExpenses :: Query ExpensesDB Expenses-}
-{-queryExpenses = asks $ view expensesDB-}
+updateAt :: (a -> Bool) -> a -> [a] -> [a]
+updateAt p x xs = maybe (x:xs) (\i -> xs & element i .~ x) (DL.findIndex p xs)
 
-{-insertExpenses :: [ExpenseItem] -> Update ExpensesDB ()-}
-{-insertExpenses es = expensesDB %= union (fromList es)-}
-
-{-insertExpense :: ExpenseItem -> Update ExpensesDB ()-}
-{-insertExpense e = expensesDB %= union-}
-
+-- returns a db of items that are ok to insert into the passed db
+-- without giving duplicates and the list of duplicate items
+--
 upsertExpenses :: [ExpenseItem] -> ExpenseDB -> (ExpenseDB,[[ExpenseItem]])
-upsertExpenses es db = foldr upsertE (db,[]) es
+upsertExpenses es db = foldr upsertE (def,[]) es
   where
-    upsertE e (db,dups) = either (\x -> (x,[])) (\x -> (db,x:dups)) $ upsertExpense e db
+    upsertE e (mdb,dups) = either (\x -> (insert x mdb,[])) (\x -> (mdb,updateAt (compareDups (head x)) x dups)) $ upsertExpense e db
+    compareDups e [] = False
+    compareDups e (x:xs) = (e^.expenseDate) == (x^.expenseDate) && (e^.amount) == (x^.amount)
 
-upsertExpense :: ExpenseItem -> ExpenseDB -> Either ExpenseDB [ExpenseItem]
-upsertExpense e db = upsertExpense' e db (expenseDuplicates e db)
+upsertExpense :: ExpenseItem -> ExpenseDB -> Either ExpenseItem [ExpenseItem]
+upsertExpense e db = upsertExpense' e (expenseDuplicates e db)
   where
-    upsertExpense' e db [] = Left $ insert e db
-    upsertExpense' e _ dups = Right $ e : dups
+    upsertExpense' e [] = Left $ e
+    upsertExpense' e dups = Right $ e : dups
 
 expenseDuplicates :: ExpenseItem -> ExpenseDB -> [ExpenseItem]
 expenseDuplicates e db = toList $ db @= (e^.expenseDate) @= (e^.amount)
 
-{-updateAt :: (a -> Bool) -> a -> [a] -> [a]-}
-{-updateAt p x xs = maybe xs (\i -> xs & element i .~ x) (DL.findIndex p xs)-}
+earliestExpense :: [ExpenseItem] -> ExpenseItem
+earliestExpense ts = DL.minimumBy (\a b -> compare (a^.expenseDate) (b^.expenseDate)) ts
 
-{-mergeExpenses :: Expenses -> Expenses -> (Expenses, [ExpenseItem])-}
-{-mergeExpenses xs ys = (xs & items .~ merged^._1, merged^._2)-}
-  {-where-}
-    {-merged = mergeDups isDuplicate (xs^.items) (ys^.items)-}
-    {-isDuplicate a b = (a^.expenseDate == b^.expenseDate) && (a^.amount == b^.amount)-}
-
-{-mergeDups :: (a -> a -> Bool) -> [a] -> [a] -> ([a],[a])-}
-{-mergeDups pred as bs = foldr merged (bs,[]) as-}
-  {-where-}
-    {-merged x kept-}
-      {-| any (pred x) (kept^._1) = kept & _2 %~ (x:)-}
-      {-| otherwise = kept & _1 %~ (x:)-}
+latestExpense :: [ExpenseItem] -> ExpenseItem
+latestExpense ts = DL.maximumBy (\a b -> compare (a^.expenseDate) (b^.expenseDate)) ts

@@ -15,6 +15,7 @@ module Main where
 import Data.Acid
 import Data.Acid.Abstract
 import Data.Budget
+import Data.Bank
 import YabAcid
 import Control.Exception
 import Control.Monad.Catch

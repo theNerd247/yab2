@@ -12,21 +12,24 @@
 module Data.Bank where
 
 import CSV
+import Control.Exception
 import Control.Lens hiding ((.=))
+import Control.Monad.Catch
+import Control.Monad.IO.Class
 import Control.Monad.Reader (ask)
 import Control.Monad.State (get,put,modify)
-import Control.Monad.Catch
 import Data.Acid
-import Data.DayDefault
-import Data.Data
-import Data.Default
+import Data.BID
 import Data.Budget.Expense
+import Data.Budget.Internal
+import Data.Data
+import Data.Default.Time
+import Data.Default
 import Data.Time
 import Data.Traversable (forM)
 import Data.Yaml hiding ((.~))
 import GHC.Generics hiding (to)
 import System.FilePath.Posix
-import Control.Monad.IO.Class
 import qualified Data.Csv as CSV
 import qualified Data.List as DL
 import qualified Data.Text as DT
@@ -48,6 +51,8 @@ makeClassy ''Bank
 
 makeClassy ''Transaction
 
+instance CSV.FromRecord Transaction
+
 instance Default Bank 
 
 instance Default Transaction
@@ -56,35 +61,34 @@ instance FromJSON Bank
 
 instance ToJSON Bank
 
-loadYamlFile :: (FromJSON a) => FilePath -> IO a
-loadYamlFile fp = decodeFileEither fp >>= either throwIO return
+loadYamlFile :: (FromJSON a, MonadIO m) => FilePath -> m a
+loadYamlFile fp = liftIO $ decodeFileEither fp >>= either throwIO return
 
-loadTransactionFile :: FilePath -> IO [Transaction]
-loadTransactionFile = loadCSVFile
+loadTransactionFile :: (MonadIO m) => FilePath -> m [Transaction]
+loadTransactionFile = liftIO . loadCSVFile
 
-loadNewTransactionFile :: (MonadIO m)
-  String  -- ^ name of budget to load the transactions to
+loadNewTransactionFile :: (MonadIO m) =>
+  Name  -- ^ name of budget to load the transactions to
   -> FilePath -- ^ file path to the transactions
   -> m FilePath
 loadNewTransactionFile bName fp = do 
   e <- loadTransactionFile fp >>= transToExpenses
   let newFP = takeDirectory fp </> (eFP e)
-  encodeFile newFP e
+  liftIO $ encodeFile newFP e
   return newFP
   where
-    transToExpenses ts = do 
-      newEs <- mapMOf items toExpense ts
-      return $ def & name .~ bname & items .~ newEs
+    transToExpenses = mapMOf traversed (toExpense bName)
     eFP e = (show $ startD^.expenseDate) ++ "_" ++ (show $ endD^.expenseDate) ++ ".yaml"
       where
-        startD = DL.minimumBy (\a b -> compare (a^.expenseDate) (b^.expenseDate)) $ e^.items
-        endD = DL.maximumBy (\a b -> compare (a^.expenseDate)  (b^.expenseDate)) $ e^.items
+        startD = earliestExpense e
+        endD = latestExpense e
 
-toExpense :: (HasTransaction t, MonadIO m) => t -> m ExpenseItem
-toExpense t = do 
-  bd <- newBID
+toExpense :: (HasTransaction t, MonadIO m) => Name -> t -> m ExpenseItem
+toExpense bName t = do 
+  bd <- liftIO newBID
   return $ def
     & bid .~ bd
+    & name .~ bName
     & expenseDate .~ (t^.tDate)
     & expenseReason .~ (t^.tDesc)
     & amountType .~ case (c > 0) of

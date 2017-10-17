@@ -17,7 +17,7 @@ import Data.Acid
 import Data.BID
 import Data.Budget.Internal
 import Data.Data
-import Data.DayDefault
+import Data.Default.Time
 import Data.Default
 import Data.IxSet
 import Data.SafeCopy

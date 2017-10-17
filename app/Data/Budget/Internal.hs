@@ -23,7 +23,7 @@ import Data.Default
 import Data.IxSet
 import Data.SafeCopy
 import Data.Monoid
-import Data.DayDefault
+import Data.Default.Time
 import Data.Time
 import Data.Yaml hiding ((.~))
 import GHC.Generics hiding (to)
@@ -162,6 +162,9 @@ instance HasBudgetAmount BudgetAmount where
 
 instance HasName StartInfo where
   name = startInfoBName
+
+instance HasName (YabList a) where
+  name = yabList . startInfoBName
 
 instance HasYabDB (YabDB a) a where
   yabDB = id

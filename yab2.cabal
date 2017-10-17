@@ -22,8 +22,9 @@ executable yab2
                      , Data.Budget.Budget
                      , Data.Budget.Expense
                      , Data.Budget.Internal
+                     , Data.Default.IxSet
+                     , Data.Default.Time
                      , Data.BID
-                     , Data.DayDefault
                      , YabAcid
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
@@ -31,12 +32,12 @@ executable yab2
                      , bytestring
                      , cassava
                      , directory
-                     , profunctors
                      , containers
                      , data-default
                      , exceptions
                      , filepath
                      , ixset
+                     , optparse-applicative
                      , hashable
                      , lens
                      , mtl

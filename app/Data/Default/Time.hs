@@ -1,4 +1,4 @@
-module Data.DayDefault where
+module Data.Default.Time where
 
 import Data.Time
 import Data.Default

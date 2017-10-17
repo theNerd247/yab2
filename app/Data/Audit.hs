@@ -19,7 +19,7 @@ import Control.Monad.IO.Class
 import Data.Data
 import Data.SafeCopy
 import Data.Time
-import Data.DayDefault
+import Data.Default.Time
 import Data.IxSet
 import Data.Default
 import Data.BID
