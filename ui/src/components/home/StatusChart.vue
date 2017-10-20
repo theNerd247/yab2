@@ -1,6 +1,6 @@
 <template>
 <home-card title="Current Balances">
-		<el-table slot="content" :data="budgets" :row-class-name="budgetStatus">
+		<el-table slot="content" :data="statuses" :row-class-name="budgetStatus">
 			<el-table-column prop="name" label="Budget" ></el-table-column>
 			<el-table-column prop="amount" label="Amount" > </el-table-column>
 			<el-table-column prop="limit" label="Limit"> </el-table-column>
@@ -11,7 +11,8 @@
 <script>
 import Vue from 'vue'
 import HomeCard from '@/shared/HomeCard.vue'
-import budgetsJSON from '@/assets/budgets.json'
+import statusJSON from '@/assets/budget-status.json'
+import _ from 'lodash'
 
 export default {
   components: {
@@ -19,7 +20,11 @@ export default {
 	},
 	data  () {
 		return {
-      budgets: budgetsJSON,
+		}
+	},
+	computed: {
+		statuses () {
+			return _.take(statusJSON, 10);
 		}
 	},
   methods: {
