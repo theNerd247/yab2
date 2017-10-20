@@ -15,8 +15,17 @@ cabal-version:       >=1.10
 executable yab2
   hs-source-dirs:      app
   main-is:             Main2.hs
-  other-modules:       Data.Budget
-                     , CSV
+  other-modules:       CSV
+                     , Data.Audit
+                     , Data.Bank
+                     , Data.Budget
+                     , Data.Budget.Budget
+                     , Data.Budget.Expense
+                     , Data.Budget.Internal
+                     , Data.Default.IxSet
+                     , Data.Default.Time
+                     , Data.BID
+                     , YabAcid
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , acid-state
@@ -27,6 +36,9 @@ executable yab2
                      , data-default
                      , exceptions
                      , filepath
+                     , ixset
+                     , optparse-applicative
+                     , hashable
                      , lens
                      , mtl
                      , safecopy
