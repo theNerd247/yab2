@@ -12,24 +12,51 @@
 
 module Main where
 
-import Data.Acid
-import Data.Acid.Abstract
-import Data.Budget hiding (upsertExpenses)
-import Data.Bank
-import Data.IxSet
-import YabAcid
-import Control.Exception
-import Control.Monad.Catch
-import Data.Default (def)
-import Control.Lens hiding ((<.>))
-import System.Directory
-import System.FilePath
-import Data.Audit
-import Data.SafeCopy
-import Data.Traversable (forM)
+import Control.Lens
+import Control.Monad.IO.Class
 import Control.Monad.Reader.Class
 import Control.Monad.State.Class
-import Control.Monad.IO.Class
+import Data.Acid
+import Data.Acid.Abstract
+import Data.Aeson
+import Data.Audit
+import Data.Bank
+import Data.Budget
+import Data.Default (def)
+import Data.IxSet
+import Data.Traversable (forM)
+import Snap
+import Snap.Snaplet.Heist
+import System.Directory
+import System.FilePath
+import YabAcid
+
+data App = App
+  { _db :: YabAcidState
+  } 
+
+makeLenses ''App
+
+loadDB = openLocalStateFrom "/tmp/tst" (def :: YabAcid)
+
+appInit :: SnapletInit App App 
+appInit = makeSnaplet "myapp" "Yab snaplet" Nothing $ do
+  dbRef <- liftIO $ loadDB
+  addRoutes 
+    [("", helloWorld)
+    ,("expenses", handleExpenses)
+    ]
+  return $ App dbRef
+
+handleExpenses :: Handler b App ()
+handleExpenses = method GET $ do
+  db <- asks $ view db
+  es <- getExpensesByName db "tst"
+  writeLBS . encode . toList $ es
+
+
+helloWorld :: Handler b v ()
+helloWorld = writeText $ "Hello World"
 
 {-income = 1730.77 :: Amount-}
 {-loanAmount = 11352.14 :: Amount-}
@@ -87,20 +114,8 @@ import Control.Monad.IO.Class
 {-backupFile :: FilePath -> IO ()-}
 {-backupFile f = renameFile f (f <.> ".bak")-}
 
-loadDB = openLocalStateFrom "tst" (def :: YabAcid)
 
-main = do
-  db <- loadDB
-  f <- loadNewTransactionFile "tst" "./transactions/tst.csv"
-  es <- loadYamlFile f
-  putStrLn $ "Original Length: " ++ (show . length $ es)
-  putStrLn . show . (view expenseDate) $ earliestExpense es
-  putStrLn . show . (view expenseDate) $ latestExpense es
-  dups <- mergeExpenses db es
-  putStrLn . show . length $ dups
-  es2 <- getExpensesByName db "tst"
-  putStrLn . show . stats $ es2
-  closeAcidState db
+main = serveSnaplet defaultConfig appInit
   -- open database
   {--- search for new transaction files-}
   {-newTransactionFiles <- getFromDir "transactions" ".csv"-}

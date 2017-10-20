@@ -27,7 +27,7 @@ import Data.Default.Time
 import Data.Default
 import Data.Time
 import Data.Traversable (forM)
-import Data.Yaml hiding ((.~))
+import Data.Aeson hiding ((.~))
 import GHC.Generics hiding (to)
 import System.FilePath.Posix
 import qualified Data.Csv as CSV
@@ -61,9 +61,6 @@ instance FromJSON Bank
 
 instance ToJSON Bank
 
-loadYamlFile :: (FromJSON a, MonadIO m) => FilePath -> m a
-loadYamlFile fp = liftIO $ decodeFileEither fp >>= either throwIO return
-
 loadTransactionFile :: (MonadIO m) => FilePath -> m [Transaction]
 loadTransactionFile = liftIO . loadCSVFile
 
@@ -74,7 +71,8 @@ loadNewTransactionFile :: (MonadIO m) =>
 loadNewTransactionFile bName fp = do 
   e <- loadTransactionFile fp >>= transToExpenses
   let newFP = takeDirectory fp </> (eFP e)
-  liftIO $ encodeFile newFP e
+  -- liftIO $ encodeFile newFP e
+  liftIO . putStrLn $ "Cannot encode file in loadNewTransactionFile!"
   return newFP
   where
     transToExpenses = mapMOf traversed (toExpense bName)

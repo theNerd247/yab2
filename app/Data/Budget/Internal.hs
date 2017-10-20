@@ -25,7 +25,7 @@ import Data.SafeCopy
 import Data.Monoid
 import Data.Default.Time
 import Data.Time
-import Data.Yaml hiding ((.~))
+import Data.Aeson hiding ((.~))
 import GHC.Generics hiding (to)
 import qualified Data.Text as DT
 import qualified Data.List as DL
