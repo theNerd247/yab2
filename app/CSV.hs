@@ -52,15 +52,23 @@ csvEncodeOptions = CSV.defaultEncodeOptions
   CSV.encQuoting = CSV.QuoteNone
   }
 
-dayFormats = ["%F"]
+dayFormats = "%F" : [
+  "%"++u++"m"
+  ++s++"%"++u++"d"
+  ++s++"%"++y
+  -- note: y must be parsed before Y
+  | u <- ["","_","0","-"], y <- ["y","Y"], s <- ["/","-"]
+  ]
 
 parseDate :: String -> Maybe Day
 parseDate s = case parseTimes s of
   [] -> Nothing
   (x:xs) -> return x
   where
-    parseTimes = parseFormat "%F"
-    parseFormat f s = [t | (t,r) <- readSTime True defaultTimeLocale f s, all isSpace r]
+    parseTimes s = mconcat $ parseFormat <$> dayFormats <*> pure s
+
+parseFormat :: String -> String -> [Day]
+parseFormat f s = [t | (t,r) <- readSTime True defaultTimeLocale f s, all isSpace r]
 
 -- | saves a csv compatable type to a file
 saveCSVFile :: (MonadIO m, CSV.ToRecord a) => FilePath -> [a] -> m ()
