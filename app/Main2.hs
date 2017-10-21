@@ -43,17 +43,21 @@ appInit :: SnapletInit App App
 appInit = makeSnaplet "myapp" "Yab snaplet" Nothing $ do
   dbRef <- liftIO $ loadDB
   addRoutes 
-    [("", helloWorld)
+    [("/", helloWorld)
     ,("expenses", handleExpenses)
     ]
+  wrapSite (allowVue >>)
   return $ App dbRef
+
+allowVue :: Handler b v ()
+allowVue = modifyResponse $ setHeader "Access-Control-Allow-Origin" "http://localhost:8080"
 
 handleExpenses :: Handler b App ()
 handleExpenses = method GET $ do
   db <- asks $ view db
   es <- getExpensesByName db "tst"
+  modifyResponse $ setHeader "Content-Type" "application/json"
   writeLBS . encode . toList $ es
-
 
 helloWorld :: Handler b v ()
 helloWorld = writeText $ "Hello World"
