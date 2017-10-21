@@ -32,6 +32,7 @@ import Snap
 import Snap.Snaplet.Heist
 import System.Directory
 import System.FilePath
+import Snap.Util.FileUploads
 import YabAcid
 import qualified Data.ByteString.Char8 as B
 
@@ -47,11 +48,11 @@ appInit :: SnapletInit App App
 appInit = makeSnaplet "myapp" "Yab snaplet" Nothing $ do
   dbRef <- liftIO $ loadDB
   addRoutes 
-    [("expenses/:name", withParam "name" $ expensesByName)
-    ,("expenses/:sdate/:edate", withParam "sdate" $ \s -> withParam "edate" $ expensesByDate s)
+    [("expenses/name/:name", withParam "name" $ expensesByName)
+    ,("expenses/upload/:name", withParam "name" $ uploadTFile)
+    ,("expenses/date/:sdate/:edate", withParam "sdate" $ \s -> withParam "edate" $ expensesByDate s)
     ]
   onUnload $ closeAcidState dbRef
-  wrapSite (allowVueDev >>)
   return $ App dbRef
 
 allowVueDev :: Handler b v ()
@@ -91,6 +92,23 @@ expensesByDate bsdate bedate = method GET $ do
     return $ do 
       db <- asks $ view db
       getExpensesByDate db sdate edate >>= asJSON . toList
+
+uploadCSVFiles :: (FilePath -> Handler b App a) -> Handler b App [a]
+uploadCSVFiles f = withTemporaryStore "/tmp" "yab-" $ \store -> do
+    (inputs, files) <- handleFormUploads defaultUploadPolicy
+                                         defaultFileUploadPolicy
+                                         (const store)
+    sequence $ (f . formFileValue) <$> files
+
+uploadTFile :: B.ByteString -> Handler b App ()
+uploadTFile name' = do
+  let name = B.unpack name'
+  liftIO $ putStrLn $ "File name: " ++ name
+  dups <- uploadCSVFiles $ \f -> do
+    db <- asks $ view db
+    es <- loadNewTransactionFile name f
+    mergeExpenses db es
+  asJSON $ mconcat dups
 
 {-income = 1730.77 :: Amount-}
 {-loanAmount = 11352.14 :: Amount-}

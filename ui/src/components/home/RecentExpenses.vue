@@ -40,7 +40,7 @@ export default {
 		httpGetExpenses(){
 			let sdate = moment().subtract(30, 'days').format("YYYY-MM-DD");
 			let edate = moment().format("YYYY-MM-DD");
-			let query = "expenses/" + sdate + "/" + edate;
+			let query = "expenses/date/" + sdate + "/" + edate;
 
 			HTTP.get(query)
 				.then(response => {

@@ -1,18 +1,22 @@
 <template>
 <home-card title="Upload Transactions">
-	<el-button slot="action" @click="uploadTransaction" type="info" style="float: right;"><i class="el-icon-upload"></i> Upload</el-button>
-	<el-form slot="content">
+	<el-form slot="content" inline>
 	<el-form-item>
-		<el-input placeholder="Budget Name"></el-input>
+		<el-input v-model="name" placeholder="Budget Name"></el-input>
 	</el-form-item>
 	<el-form-item>
-		<el-col :span="16" :offset="4">
-			<el-upload class="upload-demo" drag action="https://jsonplaceholder.typicode.com/posts/" multiple>
-				<i class="el-icon-upload"></i>
-					<div class="el-upload__text">Drop file here or <em>click to upload</em></div>
-				</el-upload>
-			</el-col>
-		</el-form-item>
+    <el-upload 
+      class="upload-demo" 
+      ref="upload"
+      :action="uploadURL"
+      :auto-upload="false"
+      >
+      <el-button slot="trigger"> <i class="el-icon-upload"></i> Add File </el-button>
+      </el-upload>
+  </el-form-item>
+  <el-form-item>
+    <el-button @click="uploadTransaction" type="info" style="float: right;"><i class="el-icon-upload"></i> Upload</el-button>
+  </el-form-item>
 	</el-form>
 </home-card>
 </template>
@@ -21,6 +25,7 @@
 import Vue from 'vue'
 import HomeCard from '@/shared/HomeCard.vue'
 import budgetsJSON from '@/assets/budgets.json'
+import { baseURL } from '@/shared/http-common'
 
 export default {
   components: {
@@ -28,7 +33,18 @@ export default {
 	},
 	data  () {
 		return {
+      name: '',
 		}
 	},
+  computed: {
+    uploadURL() {
+      return baseURL+'expenses/upload/'+this.name;
+    }
+  },
+  methods: {
+    uploadTransaction () {
+      this.$refs.upload.submit();
+    }
+  }
 }
 </script>

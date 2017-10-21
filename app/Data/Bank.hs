@@ -67,19 +67,11 @@ loadTransactionFile = liftIO . loadCSVFile
 loadNewTransactionFile :: (MonadIO m) =>
   Name  -- ^ name of budget to load the transactions to
   -> FilePath -- ^ file path to the transactions
-  -> m FilePath
-loadNewTransactionFile bName fp = do 
-  e <- loadTransactionFile fp >>= transToExpenses
-  let newFP = takeDirectory fp </> (eFP e)
-  -- liftIO $ encodeFile newFP e
-  liftIO . putStrLn $ "Cannot encode file in loadNewTransactionFile!"
-  return newFP
+  -> m [ExpenseItem]
+loadNewTransactionFile bName fp = 
+  loadTransactionFile fp >>= transToExpenses
   where
     transToExpenses = mapMOf traversed (toExpense bName)
-    eFP e = (show $ startD^.expenseDate) ++ "_" ++ (show $ endD^.expenseDate) ++ ".yaml"
-      where
-        startD = earliestExpense e
-        endD = latestExpense e
 
 toExpense :: (HasTransaction t, MonadIO m) => Name -> t -> m ExpenseItem
 toExpense bName t = do 

@@ -34,6 +34,7 @@ executable yab2
                      , directory
                      , containers
                      , snap
+                     , snap-core
                      , data-default
                      , exceptions
                      , filepath
