@@ -12,12 +12,15 @@
 
 module Main where
 
-import Control.Lens
+import Control.Lens hiding ((.=))
 import Control.Monad.IO.Class
 import Control.Monad.Reader.Class
 import Control.Monad.State.Class
+import CSV (parseDate)
+import Data.Monoid ((<>))
 import Data.Acid
 import Data.Acid.Abstract
+import Data.Maybe (fromMaybe)
 import Data.Aeson
 import Data.Audit
 import Data.Bank
@@ -30,6 +33,7 @@ import Snap.Snaplet.Heist
 import System.Directory
 import System.FilePath
 import YabAcid
+import qualified Data.ByteString.Char8 as B
 
 data App = App
   { _db :: YabAcidState
@@ -43,24 +47,50 @@ appInit :: SnapletInit App App
 appInit = makeSnaplet "myapp" "Yab snaplet" Nothing $ do
   dbRef <- liftIO $ loadDB
   addRoutes 
-    [("/", helloWorld)
-    ,("expenses", handleExpenses)
+    [("expenses/:name", withParam "name" $ expensesByName)
+    ,("expenses/:sdate/:edate", withParam "sdate" $ \s -> withParam "edate" $ expensesByDate s)
     ]
-  wrapSite (allowVue >>)
+  onUnload $ closeAcidState dbRef
+  wrapSite (allowVueDev >>)
   return $ App dbRef
 
-allowVue :: Handler b v ()
-allowVue = modifyResponse $ setHeader "Access-Control-Allow-Origin" "http://localhost:8080"
+allowVueDev :: Handler b v ()
+allowVueDev = modifyResponse $ setHeader "Access-Control-Allow-Origin" "http://localhost:8080"
 
-handleExpenses :: Handler b App ()
-handleExpenses = method GET $ do
-  db <- asks $ view db
-  es <- getExpensesByName db "tst"
+asJSON :: (ToJSON a) => a -> Handler b v ()
+asJSON x = do 
   modifyResponse $ setHeader "Content-Type" "application/json"
-  writeLBS . encode . toList $ es
+  writeLBS . encode $ x
 
-helloWorld :: Handler b v ()
-helloWorld = writeText $ "Hello World"
+withParam :: B.ByteString -> (B.ByteString -> Handler b v ()) -> Handler b v ()
+withParam name f = getParam name >>= maybe err f 
+  where
+    err = getParams >>= withErr ((B.unpack name) <> " parameter does not exist") . show
+
+withErr :: (ToJSON a) => String -> a -> Handler b v ()
+withErr msg extra = do 
+  modifyResponse $ setResponseCode 404
+  asJSON $ object 
+    ["error" .= msg
+    ,"error-extra" .= extra
+    ]
+
+expensesByName :: B.ByteString -> Handler b App ()
+expensesByName name' = method GET $ do
+  let name = B.unpack name'
+  db <- asks $ view db
+  getExpensesByName db name >>= asJSON . toList
+
+expensesByDate :: B.ByteString -> B.ByteString -> Handler b App ()
+expensesByDate bsdate bedate = method GET $ do
+  let sdate' = B.unpack $ bsdate
+  let edate' = B.unpack $ bedate
+  fromMaybe (withErr ("cannot parse a date: " ++ sdate' ++ " " ++ edate') (""::String)) $ do 
+    sdate <- parseDate sdate'
+    edate <- parseDate edate'
+    return $ do 
+      db <- asks $ view db
+      getExpensesByDate db sdate edate >>= asJSON . toList
 
 {-income = 1730.77 :: Amount-}
 {-loanAmount = 11352.14 :: Amount-}

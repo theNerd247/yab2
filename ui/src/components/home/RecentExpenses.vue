@@ -45,11 +45,6 @@ export default {
 			HTTP.get(query)
 				.then(response => {
 					this.expenses = response.data;
-					this.$notify({
-						title: 'YAY!',
-						message: 'We got data: ' + this.expenses,
-						type: 'success'
-					});
 				})
 				.catch(e => {
 					this.$notify.error({

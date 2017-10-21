@@ -138,7 +138,7 @@ mergeExpenses db = update' db . UpsertEs
 
 getBudgetyName db  = query' db . GetBByName
 
-getExpensesByDate s db = query' db . GetEsByDate s
+getExpensesByDate db s = query' db . GetEsByDate s
 
 getExpensesByAmount db = query' db . GetEsByAmount
 
