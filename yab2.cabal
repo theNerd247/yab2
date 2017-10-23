@@ -35,7 +35,9 @@ executable yab2
                      , containers
                      , snap
                      , snap-core
+                     , snap-web-routes
                      , data-default
+                     , web-routes
                      , exceptions
                      , filepath
                      , ixset

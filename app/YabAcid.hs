@@ -136,7 +136,7 @@ addBudgetList db es = do
 
 mergeExpenses db = update' db . UpsertEs
 
-getBudgetyName db  = query' db . GetBByName
+getBudgetByName db  = query' db . GetBByName
 
 getExpensesByDate db s = query' db . GetEsByDate s
 
@@ -148,4 +148,4 @@ getExpensesByName db = query' db . GetEsByName
 
 getExpensesByBID db = query' db . GetEsByBID
 
-queryStartInfo db = query' db . QuerySInfo
+getStartInfo db = query' db . QuerySInfo

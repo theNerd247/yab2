@@ -38,7 +38,7 @@ export default {
 	},
   computed: {
     uploadURL() {
-      return baseURL+'expenses/upload/'+this.name;
+      return baseURL+'expenses/upload-transaction/'+this.name;
     }
   },
   methods: {

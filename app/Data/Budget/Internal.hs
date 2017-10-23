@@ -244,6 +244,9 @@ getEmptyDate budget = g 0
         | otherwise = g (n+1)
       f n = getBalanceAtPeriod (n+1) budget
 
+getBalances :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a) => Rate -> Rate -> f a -> [Amount]
+getBalances s e b = [s..e]^..traverse . to (\d -> getBalanceAtPeriod d b)
+
 -- prints the balance of the budget at each period from start to end
 printBalances :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a) => Rate -> Rate -> f a -> IO ()
 printBalances start end budget = sequence_ $ [start..end]^..traverse . to printBal
