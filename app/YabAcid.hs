@@ -52,13 +52,13 @@ $(deriveSafeCopy 0 'base ''YabAcid)
 instance Default YabAcid
 
 insertEAudit :: (Audit ExpenseItem) -> Update YabAcid ()
-insertEAudit = addAuditItem expenseAuditDB
+insertEAudit x = expenseAuditDB %= insert x
 
 insertBAudit :: (Audit BudgetItem) -> Update YabAcid ()
-insertBAudit = addAuditItem budgetAuditDB
+insertBAudit x = budgetAuditDB %= insert x
 
 insertSAudit :: (Audit StartInfo) -> Update YabAcid ()
-insertSAudit = addAuditItem startInfoAuditDB
+insertSAudit x = startInfoAuditDB %= insert x
 
 insertE :: ExpenseItem -> Update YabAcid ()
 insertE e = expenseDB %= insert e
@@ -72,6 +72,7 @@ insertSI si = startInfoDB %= insert si
 upsertEs :: [ExpenseItem] -> Update YabAcid [[ExpenseItem]]
 upsertEs es = do 
   db <- use expenseDB
+  -- upsert each expense item individually
   dups <- forM exs (upsertEs' db)
   return $ fold dups
   where 
