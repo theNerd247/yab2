@@ -1,3 +1,3 @@
 # YAB - Yet Another Budget
 
-![Preview](yab2/preview.png)
+![Preview](https://github.com/theNerd247/yab2/blob/features/snap-15/preview.png?raw=true)
