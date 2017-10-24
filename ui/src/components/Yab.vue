@@ -36,6 +36,9 @@
 					<el-row>
 						<status-chart></status-chart>
 					</el-row>
+          <el-row>
+            <recent-expenses></recent-expenses>
+          </el-row>
 					<el-row>
 
 					</el-row>
@@ -50,7 +53,6 @@
 				</el-col>
 
 				<el-col :span="8">
-					<recent-expenses></recent-expenses>
 				</el-col>
 			</el-row>
 
