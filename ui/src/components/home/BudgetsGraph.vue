@@ -28,25 +28,7 @@ export default {
 	},
   mounted () {
     this.httpGetStatus("tst");
-    let bs = _.map(this.budgetStatus, x => x[0]);
-    let es = _.map(this.budgetStatus, x => x[1]);
-    let ds = _.map(this.budgetStatus, x => x[2]);
-
-		this.balancesData = {
-			labels: ds,
-			datasets: [
-				{
-					label: 'Budget',
-					backgroundColor: 'rgba(32, 160,255, 0.5)',
-					data: bs
-				},
-				{
-					label: 'Expenses',
-					backgroundColor: 'rgba(19, 206, 102, 0.5)',
-					data: es 
-				}
-			]
-		};
+   
 	},
   methods: {
     httpGetStatus(name){
@@ -56,8 +38,8 @@ export default {
 
 			HTTP.get(query)
 				.then(response => {
-          console.log(response.data.length);
 					this.budgetStatus = response.data;
+					this.makeBudgetData();
 				})
 				.catch(e => {
 					this.$notify.error({
@@ -66,6 +48,31 @@ export default {
             duration: 0
 					})
 				});
+
+			console.log(this.budgetStatus);
+		},
+		makeBudgetData () {
+			let bs = _.map(this.budgetStatus, x => x[0]);
+			let es = _.map(this.budgetStatus, x => x[1]);
+			let ds = _.map(this.budgetStatus, x => x[2]);
+
+			console.log(this.budgetStatus);
+
+			this.balancesData = {
+				labels: ds,
+				datasets: [
+					{
+						label: 'Budget',
+						backgroundColor: 'rgba(32, 160,255, 0.5)',
+						data: bs
+					},
+					{
+						label: 'Expenses',
+						backgroundColor: 'rgba(19, 206, 102, 0.5)',
+						data: es 
+					}
+				]
+			};	
 		}
   }
 }
