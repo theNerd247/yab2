@@ -35,6 +35,10 @@ module.exports = {
       '/expenses': {
         target: 'http://localhost:8000/',
         changeOrigin: true
+      },
+      '/budget': {
+        target: 'http://localhost:8000/',
+        changeOrigin: true
       }
     },
     // CSS Sourcemaps off by default because relative paths are "buggy"

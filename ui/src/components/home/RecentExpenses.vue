@@ -51,7 +51,8 @@ export default {
 				.catch(e => {
 					this.$notify.error({
 						title: 'Error',
-						message: 'Could not get expenses at: ' + query
+            message: 'Could not get expenses at: ' + query,
+            duration: 0
 					})
 				});
 		}

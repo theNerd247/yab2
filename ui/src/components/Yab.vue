@@ -27,6 +27,9 @@
 					<el-row>
 						<upload-transaction></upload-transaction>
 					</el-row>
+          <el-row>
+            <new-budget></new-budget>
+          </el-row>
 				</el-col>
 
 				<el-col :span="8">
@@ -62,6 +65,7 @@ import StatusChart from '@/components/home/StatusChart.vue'
 import UploadTransaction from '@/components/home/UploadTransaction.vue'
 import AddExpense from '@/components/home/AddExpense.vue'
 import RecentExpenses from '@/components/home/RecentExpenses.vue'
+import NewBudget from '@/components/home/NewBudget.vue'
 
 export default {
 	components: {
@@ -69,7 +73,8 @@ export default {
 		StatusChart,
 		UploadTransaction,
 		AddExpense,
-		RecentExpenses,
+    RecentExpenses,
+    NewBudget
 	},
 	name: 'Vue',
 	data () {

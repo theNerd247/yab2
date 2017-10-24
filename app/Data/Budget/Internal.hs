@@ -19,6 +19,7 @@ import Control.Monad.Reader.Class
 import Control.Monad.State.Class
 import Data.Acid
 import Data.Data
+import Data.Audit
 import Data.Default
 import Data.IxSet
 import Data.SafeCopy
@@ -39,6 +40,8 @@ type Name = String
 type YabDB = IxSet 
 
 type StartInfoDB = YabDB StartInfo
+
+type StartInfoAuditDB = AuditDB StartInfo
 
 data AmountType = 
     Income 
@@ -128,8 +131,8 @@ instance (FromJSON a) => FromJSON (YabList a) where
 instance FromJSON StartInfo where
   parseJSON (Object o) = StartInfo
     <$> o .: "name"
-    <*> o .: "start-date"
-    <*> o .: "start-amount"
+    <*> o .: "startDate"
+    <*> o .: "startAmount"
   parseJSON _ = mempty
 
 instance Functor YabList where
@@ -206,8 +209,8 @@ budgetAmountJSON a =
 
 budgetStartJSON b =
     ["name" .= (b^.name)
-    ,"start-date" .= (b^.startDate)
-    ,"start-amount" .= (b^.startAmount)
+    ,"startDate" .= (b^.startDate)
+    ,"startAmount" .= (b^.startAmount)
     ]
 
 listToDB :: (Typeable a, Ord a, Indexable a) => YabList a -> YabDB a
@@ -230,10 +233,10 @@ getBalancesBetween start end b = [start..end]^..traverse . to (flip getBalanceAt
 
 -- returns the difference of the budget balance (b2 - b1) at each period between
 -- the start and end times
-compareBudgetsBetween :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a, BudgetAtPeriod b, HasStartInfo (g b), HasYabList (g b) b) => Rate -> Rate -> (f a) -> (g b) -> [Amount]
+compareBudgetsBetween :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a, BudgetAtPeriod b, HasStartInfo (g b), HasYabList (g b) b) => Rate -> Rate -> (f a) -> (g b) -> [(Amount,Amount,Rate)]
 compareBudgetsBetween start end b1 b2 = [start..end]^..traverse . to compare
   where
-    compare p = (getBalanceAtPeriod p b2) - (getBalanceAtPeriod p b1)
+    compare p = ((getBalanceAtPeriod p b1), (getBalanceAtPeriod p b2), p)
 
 -- get's the first period where the budget balance is <= 0
 getEmptyDate :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a) => f a -> Rate

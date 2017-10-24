@@ -18,6 +18,7 @@ import Control.Monad.IO.Class
 import Control.Monad.Reader.Class
 import Control.Monad.State.Class
 import Control.Monad.State (get)
+import Control.Applicative
 import Data.Acid
 import Data.Acid.Abstract
 import Data.Aeson
@@ -29,7 +30,7 @@ import Data.IxSet
 import Data.List (sortOn)
 import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
-import Data.Time (Day)
+import Data.Time (Day, fromGregorian)
 import Data.Traversable (forM)
 import Snap
 import Snap.Snaplet.Heist
@@ -51,7 +52,8 @@ data App = App
 makeLenses ''App
 
 data AppUrl = 
-  AppExpensesUrl ExpensesUrl
+    AppExpensesUrl ExpensesUrl
+  | AppBudgetUrl BudgetUrl
   deriving (Eq,Ord,Show,Read,Generic)
 
 data ExpensesUrl =
@@ -60,11 +62,21 @@ data ExpensesUrl =
   | UploadTransaction Name
   deriving (Eq,Ord,Show,Read,Generic)
 
+data BudgetUrl =
+  BudgetStatuses
+  | BudgetStatus Name Day Day
+  | CreateBudget
+  deriving (Eq,Ord,Show,Read,Generic)
+
 instance PathInfo ExpensesUrl
+instance PathInfo BudgetUrl
 
 instance PathInfo AppUrl where
   toPathSegments (AppExpensesUrl e) = "expenses" : toPathSegments e
-  fromPathSegments = segment "expenses" *> (AppExpensesUrl <$> fromPathSegments)
+  toPathSegments (AppBudgetUrl e) = "budget" : toPathSegments e
+  fromPathSegments = 
+    (segment "expenses" *> (AppExpensesUrl <$> fromPathSegments))
+    <|> (segment "budget" *> (AppBudgetUrl <$> fromPathSegments))
 
 instance PathInfo Day where
   toPathSegments d = [T.pack $ show d]
@@ -81,17 +93,18 @@ instance HasRouter (Handler b RouterState) where
 appInit :: SnapletInit App App 
 appInit = makeSnaplet "myapp" "Yab snaplet" Nothing $ do
   dbRef <- liftIO $ openLocalStateFrom "/tmp/tst" (def :: YabAcid)
+  onUnload $ closeAcidState dbRef
   r <- nestSnaplet "router" router $ initRouter ""
   addRoutes [("", routeWith routeAppUrl),("/tstroutes",tstroutes)]
-  onUnload $ closeAcidState dbRef
   return $ App dbRef r
 
 tstroutes = do
-  p <- urlPath $ AppExpensesUrl $ ByName "tst"
+  p <- urlPath $ AppBudgetUrl $ BudgetStatus "tst" (fromGregorian 2017 08 01) (fromGregorian 2017 09 30)
   asJSON $ p
 
 routeAppUrl :: AppUrl -> Handler App App ()
 routeAppUrl (AppExpensesUrl e) = routeExpensesUrl e
+routeAppUrl (AppBudgetUrl b) = routeBudgetUrl b
 
 routeExpensesUrl :: ExpensesUrl -> Handler App App ()
 routeExpensesUrl (ByDate sdate edate) = method GET $ do
@@ -109,6 +122,32 @@ routeExpensesUrl (UploadTransaction name) = do
     es <- loadNewTransactionFile name f
     mergeExpenses db es
   asJSON $ mconcat dups
+
+routeBudgetUrl :: BudgetUrl -> Handler App App ()
+routeBudgetUrl  (BudgetStatus name sdate edate) = method GET $ do
+  db <- asks $ view db
+  mb <- asYabList db name $ getBudgetByName db name
+  mes <- asYabList db name $ getExpensesByDate db sdate edate
+  let s = fromMaybe [] (status mb mes sdate edate)
+  asJSON $ s 
+  where
+    status mb mes sd ed = do
+      b <- mb
+      es <- mes
+      let s = compareBudgetsBetween (dayToRate (b^.startDate) sd) (dayToRate (b^.startDate) ed) b es
+      return $ s & traverse._3 %~ (rateToDay $ b^.startDate)
+
+routeBudgetUrl CreateBudget = method POST $ do
+  db <- asks $ view db
+  bdy <- (readRequestBody 1024)
+  let newBudgetList = eitherDecode bdy
+  liftIO . putStrLn . show $ bdy
+  either withErr (insertBudgetList db) (newBudgetList :: Either String BudgetList)
+
+withErr :: String -> Handler b v ()
+withErr msg = do 
+  modifyResponse $ setResponseCode 500
+  asJSON $ object ["message" .= msg]
 
 allowVueDev :: Handler b v ()
 allowVueDev = modifyResponse $ setHeader "Access-Control-Allow-Origin" "http://localhost:8080"
