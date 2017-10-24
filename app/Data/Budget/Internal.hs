@@ -19,13 +19,14 @@ import Control.Monad.Reader.Class
 import Control.Monad.State.Class
 import Data.Acid
 import Data.Data
+import Data.Audit
 import Data.Default
 import Data.IxSet
 import Data.SafeCopy
 import Data.Monoid
 import Data.Default.Time
 import Data.Time
-import Data.Yaml hiding ((.~))
+import Data.Aeson hiding ((.~))
 import GHC.Generics hiding (to)
 import qualified Data.Text as DT
 import qualified Data.List as DL
@@ -39,6 +40,8 @@ type Name = String
 type YabDB = IxSet 
 
 type StartInfoDB = YabDB StartInfo
+
+type StartInfoAuditDB = AuditDB StartInfo
 
 data AmountType = 
     Income 
@@ -128,8 +131,8 @@ instance (FromJSON a) => FromJSON (YabList a) where
 instance FromJSON StartInfo where
   parseJSON (Object o) = StartInfo
     <$> o .: "name"
-    <*> o .: "start-date"
-    <*> o .: "start-amount"
+    <*> o .: "startDate"
+    <*> o .: "startAmount"
   parseJSON _ = mempty
 
 instance Functor YabList where
@@ -206,8 +209,8 @@ budgetAmountJSON a =
 
 budgetStartJSON b =
     ["name" .= (b^.name)
-    ,"start-date" .= (b^.startDate)
-    ,"start-amount" .= (b^.startAmount)
+    ,"startDate" .= (b^.startDate)
+    ,"startAmount" .= (b^.startAmount)
     ]
 
 listToDB :: (Typeable a, Ord a, Indexable a) => YabList a -> YabDB a
@@ -230,10 +233,10 @@ getBalancesBetween start end b = [start..end]^..traverse . to (flip getBalanceAt
 
 -- returns the difference of the budget balance (b2 - b1) at each period between
 -- the start and end times
-compareBudgetsBetween :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a, BudgetAtPeriod b, HasStartInfo (g b), HasYabList (g b) b) => Rate -> Rate -> (f a) -> (g b) -> [Amount]
+compareBudgetsBetween :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a, BudgetAtPeriod b, HasStartInfo (g b), HasYabList (g b) b) => Rate -> Rate -> (f a) -> (g b) -> [(Amount,Amount,Rate)]
 compareBudgetsBetween start end b1 b2 = [start..end]^..traverse . to compare
   where
-    compare p = (getBalanceAtPeriod p b2) - (getBalanceAtPeriod p b1)
+    compare p = ((getBalanceAtPeriod p b1), (getBalanceAtPeriod p b2), p)
 
 -- get's the first period where the budget balance is <= 0
 getEmptyDate :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a) => f a -> Rate
@@ -243,6 +246,9 @@ getEmptyDate budget = g 0
         | (f n) <= 0 = n
         | otherwise = g (n+1)
       f n = getBalanceAtPeriod (n+1) budget
+
+getBalances :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a) => Rate -> Rate -> f a -> [Amount]
+getBalances s e b = [s..e]^..traverse . to (\d -> getBalanceAtPeriod d b)
 
 -- prints the balance of the budget at each period from start to end
 printBalances :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a) => Rate -> Rate -> f a -> IO ()
@@ -259,38 +265,6 @@ currentBudgetBal b = do
   n <- utctDay <$> getCurrentTime
   return $ getBalanceAtPeriod (dayToRate (b^.startDate) n) b
 
-queryYabDB :: (HasYabDB r a, MonadReader s m) => Lens' s r -> m (YabDB a)
-queryYabDB l = asks $ view (l.yabDB)
-
-updateYabDB :: (HasYabDB r a, MonadState s m) => Lens' s r -> (YabDB a) -> m ()
-updateYabDB l db = assign (l.yabDB) db
-
-queryDBItems :: (HasYabDB r a, MonadReader s m) => Lens' s r -> (YabDB a -> YabDB a) -> m (YabDB a)
-queryDBItems l f = asks $ view (l.yabDB.to f)
-
 -- updates each element by the given key using updateIx
 updateDBItems :: (HasYabDB r a, MonadState s m, Ord a, Indexable a, Typeable k, Typeable a) => Lens' s r -> k -> [a] -> m ()
 updateDBItems l key values = l.yabDB %= (appEndo (foldMap (Endo . updateIx key) values))
-
-queryYabList :: (HasYabList r a, MonadReader s m) => Lens' s r -> m (YabList a)
-queryYabList l = asks $ view (l.yabList)
-
-updateYabList :: (HasYabList r a, MonadState s m) => Lens' s r -> (YabList a) -> m ()
-updateYabList le l = assign (le.yabList) l
-
--- runs a query that preserves the index of the elements found
-queryListItems :: (HasYabList r a, MonadReader s m) =>  Lens' s r -> (a -> Bool) -> m (YabList (Int,a))
-queryListItems l pred = do 
-  db <- asks $ view (l.yabList)
-  return $ YabList 
-    { _yabListStartInfo = db^.startInfo
-    , _items = itoListOf (items.folded.filtered pred) db
-    }
-
--- updates each element by the given key using updateIx
-updateListItems :: (HasYabList r a, MonadState s m) => Lens' s r -> [(Int,a)] -> m ()
-updateListItems l values = l.yabList.items %= (appEndo (foldMap (Endo . upsert) values))
-  where
-    upsert (i,x) xs
-      | i < 0 = xs
-      | otherwise = xs & element i .~ x

@@ -12,126 +12,156 @@
 
 module Main where
 
-import Data.Acid
-import Data.Acid.Abstract
-import Data.Budget hiding (upsertExpenses)
-import Data.Bank
-import Data.IxSet
-import YabAcid
-import Control.Exception
-import Control.Monad.Catch
-import Data.Default (def)
-import Control.Lens hiding ((<.>))
-import System.Directory
-import System.FilePath
-import Data.Audit
-import Data.SafeCopy
-import Data.Traversable (forM)
+import CSV (parseDate)
+import Control.Lens hiding ((.=))
+import Control.Monad.IO.Class
 import Control.Monad.Reader.Class
 import Control.Monad.State.Class
-import Control.Monad.IO.Class
+import Control.Monad.State (get)
+import Control.Applicative
+import Data.Acid
+import Data.Acid.Abstract
+import Data.Aeson
+import Data.Audit
+import Data.Bank
+import Data.Budget
+import Data.Default (def)
+import Data.IxSet
+import Data.List (sortOn)
+import Data.Maybe (fromMaybe)
+import Data.Monoid ((<>))
+import Data.Time (Day, fromGregorian)
+import Data.Traversable (forM)
+import Snap
+import Snap.Snaplet.Heist
+import Snap.Util.FileUploads
+import System.Directory
+import System.FilePath
+import Snap.Snaplet.Router
+import Snap.Snaplet.Router.Types
+import Web.Routes.PathInfo
+import YabAcid
+import qualified Data.ByteString.Char8 as B
+import qualified Data.Text as T
 
-{-income = 1730.77 :: Amount-}
-{-loanAmount = 11352.14 :: Amount-}
+data App = App
+  { _db :: YabAcidState
+  , _router :: Snaplet RouterState
+  } 
 
-{-bank = def & checking .~ 3868.88 & savings .~ 1848.55-}
+makeLenses ''App
 
-{-mkBItem e a r = (def :: BudgetItem)-}
-    {-& budgetType .~ Expense e-}
-    {-& rate .~ r -}
-    {-& amount .~ a-}
+data AppUrl = 
+    AppExpensesUrl ExpensesUrl
+  | AppBudgetUrl BudgetUrl
+  deriving (Eq,Ord,Show,Read,Generic)
 
-{-budgetLoan :: BudgetList-}
-{-budgetLoan = def -}
-  {-& name .~ "Loan"-}
-  {-& startDate .~ fromGregorian 2017 09 01-}
-  {-& startAmount .~ loanAmount-}
-  {-& items .~-}
-    {-[mkBItem "loan" (income - (income*0.1 + income*0.2)) 15-}
-    {-]-}
-  {-where-}
+data ExpensesUrl =
+  ByDate Day Day
+  | ByName Name
+  | UploadTransaction Name
+  deriving (Eq,Ord,Show,Read,Generic)
 
-{-budgetLiving :: BudgetList-}
-{-budgetLiving = def-}
-  {-& name .~ "Living"-}
-  {-& startDate .~ fromGregorian 2017 09 01-}
-  {-& startAmount .~ income-}
-  {-& items .~ -}
-    {-[ def & amount .~ 500 & rate .~ 2000-}
-    {-, def & amount .~ (income*0.1 + income*0.2) & rate .~ 15-}
-    {-, mkBItem "tithe" (income*0.1) 15-}
-    {-, mkBItem "taxes"  (income*0.2) 15-}
-    {-, mkBItem "rent"      350 31-}
-    {-, mkBItem "auto"      20 7-}
-    {-, mkBItem "food"      20 7-}
-    {-, mkBItem "insurance" 76 31-}
-    {-, mkBItem "phone"     30 31 -}
-    {-, mkBItem "climbing"  55 31-}
-    {-, mkBItem "mentoring" 7  31-}
-    {-]-}
+data BudgetUrl =
+  BudgetStatuses
+  | BudgetStatus Name Day Day
+  | CreateBudget
+  deriving (Eq,Ord,Show,Read,Generic)
 
-{-getFromDir d ext = listDirectory d >>= return . fmap (d </>). filter ((==ext) . takeExtension)-}
+instance PathInfo ExpensesUrl
+instance PathInfo BudgetUrl
 
-{-data NoNameException = NoNameException String-}
-  {-deriving (Eq,Ord,Show,Read)-}
+instance PathInfo AppUrl where
+  toPathSegments (AppExpensesUrl e) = "expenses" : toPathSegments e
+  toPathSegments (AppBudgetUrl e) = "budget" : toPathSegments e
+  fromPathSegments = 
+    (segment "expenses" *> (AppExpensesUrl <$> fromPathSegments))
+    <|> (segment "budget" *> (AppBudgetUrl <$> fromPathSegments))
 
-{-instance Exception NoNameException-}
+instance PathInfo Day where
+  toPathSegments d = [T.pack $ show d]
+  fromPathSegments = pToken (const "parse date") $ parseDate . T.unpack
+  
+instance HasRouter (Handler App App) where
+  type URL (Handler App App) = AppUrl
+  getRouterState = with router get
 
-{-guardNoName :: (HasName n) => FilePath -> n -> IO a -> IO a-}
-{-guardNoName f e m-}
-  {-| e^.name == "" = throwM . NoNameException $ "You need to name the expenses! Not merging: " ++ f-}
-  {-| otherwise = m-}
+instance HasRouter (Handler b RouterState) where
+  type URL (Handler b RouterState) = AppUrl
+  getRouterState = get
 
-{-prefixOf n = reverse . take n . reverse-}
+appInit :: SnapletInit App App 
+appInit = makeSnaplet "myapp" "Yab snaplet" Nothing $ do
+  dbRef <- liftIO $ openLocalStateFrom "/tmp/tst" (def :: YabAcid)
+  onUnload $ closeAcidState dbRef
+  r <- nestSnaplet "router" router $ initRouter ""
+  addRoutes [("", routeWith routeAppUrl),("/tstroutes",tstroutes)]
+  return $ App dbRef r
 
-{-backupFile :: FilePath -> IO ()-}
-{-backupFile f = renameFile f (f <.> ".bak")-}
+tstroutes = do
+  p <- urlPath $ AppBudgetUrl $ BudgetStatus "tst" (fromGregorian 2017 08 01) (fromGregorian 2017 09 30)
+  asJSON $ p
 
-loadDB = openLocalStateFrom "tst" (def :: YabAcid)
+routeAppUrl :: AppUrl -> Handler App App ()
+routeAppUrl (AppExpensesUrl e) = routeExpensesUrl e
+routeAppUrl (AppBudgetUrl b) = routeBudgetUrl b
 
-main = do
-  db <- loadDB
-  f <- loadNewTransactionFile "tst" "./transactions/tst.csv"
-  es <- loadYamlFile f
-  putStrLn $ "Original Length: " ++ (show . length $ es)
-  putStrLn . show . (view expenseDate) $ earliestExpense es
-  putStrLn . show . (view expenseDate) $ latestExpense es
-  dups <- mergeExpenses db es
-  putStrLn . show . length $ dups
-  es2 <- getExpensesByName db "tst"
-  putStrLn . show . stats $ es2
-  closeAcidState db
-  -- open database
-  {--- search for new transaction files-}
-  {-newTransactionFiles <- getFromDir "transactions" ".csv"-}
-  {--- search for new expenses files-}
-  {-newExpensesFiles <- getFromDir "transactions" ".yaml" >>= return . filter ((\x -> x/="merge.yaml" && x/="_dups.yaml") . prefixOf 10)-}
-  {--- convert and save the new transactions so we can add reasons-}
-  {-forM newTransactionFiles $ \f -> do -}
-    {-efp <- loadNewTransactionFile "" f-}
-    {-backupFile f-}
-    {-putStrLn $ "Expenses file ready! " ++ (efp -<.> "yaml")-}
-  {--- force insert merged transactions-}
-  {-forceMergeFiles <- getFromDir "transactions" ".yaml" >>= return . filter ((=="_merge.yaml") . prefixOf 11)-}
-  {-forM forceMergeFiles $ \f -> do-}
-    {-e <- loadYamlFile f-}
-    {-guardNoName f e $ do-}
-      {-update db . InsertExpenses $ e-}
-      {-putStrLn $ "Force merged expenses in: " ++ f-}
-      {-backupFile f-}
-  {--- upsert new expenses files-}
-  {-forM newExpensesFiles $ \f -> do -}
-    {-e <- loadYamlFile f :: IO Expenses-}
-    {-guardNoName f e $ do-}
-      {-dups <- update db . UpsertExpenses $ e-}
-      {-case dups of-}
-        {-[] -> do -}
-          {-putStrLn $ f ++ " Successfully loaded!"-}
-        {-_ -> do-}
-          {-putStrLn $ "You have duplicate expenses in: " ++ f-}
-          {-putStrLn $ "I've merged the unique entries for you...you'll find the duplicates in: " ++ dupsFP-}
-          {-putStrLn $ "Edit this file and rename _dups.yaml to _merge.yaml to force merge the expenses: " ++ dupsFP-}
-          {-encodeFile dupsFP (e & items .~ dups)-}
-          {-where-}
-            {-dupsFP = ((f -<.> "") ++ "_dups.yaml")    -}
-    {-backupFile f-}
+routeExpensesUrl :: ExpensesUrl -> Handler App App ()
+routeExpensesUrl (ByDate sdate edate) = method GET $ do
+  db <- asks $ view db
+  getExpensesByDate db sdate edate >>= asJSON . (sortOn $ view expenseDate) . toList
+
+routeExpensesUrl (ByName name) = method GET $ do
+  db <- asks $ view db
+  getExpensesByName db name >>= asJSON . toList
+
+routeExpensesUrl (UploadTransaction name) = do
+  dups <- uploadCSVFiles $ \f -> do
+    liftIO . putStrLn $ "uploaded: " ++ f
+    db <- asks $ view db
+    es <- loadNewTransactionFile name f
+    mergeExpenses db es
+  asJSON $ mconcat dups
+
+routeBudgetUrl :: BudgetUrl -> Handler App App ()
+routeBudgetUrl  (BudgetStatus name sdate edate) = method GET $ do
+  db <- asks $ view db
+  mb <- asYabList db name $ getBudgetByName db name
+  mes <- asYabList db name $ getExpensesByDate db sdate edate
+  let s = fromMaybe [] (status mb mes sdate edate)
+  asJSON $ s 
+  where
+    status mb mes sd ed = do
+      b <- mb
+      es <- mes
+      let s = compareBudgetsBetween (dayToRate (b^.startDate) sd) (dayToRate (b^.startDate) ed) b es
+      return $ s & traverse._3 %~ (rateToDay $ b^.startDate)
+
+routeBudgetUrl CreateBudget = method POST $ do
+  db <- asks $ view db
+  bdy <- (readRequestBody 1024)
+  let newBudgetList = eitherDecode bdy
+  liftIO . putStrLn . show $ bdy
+  either withErr (insertBudgetList db) (newBudgetList :: Either String BudgetList)
+
+withErr :: String -> Handler b v ()
+withErr msg = do 
+  modifyResponse $ setResponseCode 500
+  asJSON $ object ["message" .= msg]
+
+allowVueDev :: Handler b v ()
+allowVueDev = modifyResponse $ setHeader "Access-Control-Allow-Origin" "http://localhost:8080"
+
+asJSON :: (ToJSON a) => a -> Handler b v ()
+asJSON x = do 
+  modifyResponse $ setHeader "Content-Type" "application/json"
+  writeLBS . encode $ x
+
+uploadCSVFiles :: (FilePath -> Handler b App a) -> Handler b App [a]
+uploadCSVFiles f = withTemporaryStore "/tmp" "yab-" $ \store -> do
+    (inputs, files) <- handleFormUploads defaultUploadPolicy
+                                         defaultFileUploadPolicy
+                                         (const store)
+    sequence $ (f . formFileValue) <$> files
+
+main = serveSnaplet defaultConfig appInit

@@ -23,7 +23,6 @@ import Control.Monad.Catch
 import Control.Monad.IO.Class
 import Data.Time
 import Data.Data
-import qualified Control.Monad as CM
 import qualified Data.Csv as CSV
 import qualified GHC.Exts as GE (toList)
 import qualified Data.ByteString.Char8 as BS (null)
@@ -44,7 +43,7 @@ instance CSV.ToField Day where
   toField = CSV.toField . formatTime defaultTimeLocale "%x"
 
 instance CSV.FromField Day where
-  parseField f = parseDate =<< (CSV.parseField f :: CSV.Parser String)
+  parseField f = (maybe mempty return . parseDate) =<< (CSV.parseField f :: CSV.Parser String)
 
 -- | Our custom CSV options 
 csvEncodeOptions = CSV.defaultEncodeOptions 
@@ -53,7 +52,7 @@ csvEncodeOptions = CSV.defaultEncodeOptions
   CSV.encQuoting = CSV.QuoteNone
   }
 
-dayFormats = [
+dayFormats = "%F" : [
   "%"++u++"m"
   ++s++"%"++u++"d"
   ++s++"%"++y
@@ -61,14 +60,15 @@ dayFormats = [
   | u <- ["","_","0","-"], y <- ["y","Y"], s <- ["/","-"]
   ]
 
-
-parseDate :: (CM.MonadPlus m) => String -> m Day
+parseDate :: String -> Maybe Day
 parseDate s = case parseTimes s of
-  [] -> CM.mzero
+  [] -> Nothing
   (x:xs) -> return x
   where
     parseTimes s = mconcat $ parseFormat <$> dayFormats <*> pure s
-    parseFormat f s = [t | (t,r) <- readSTime True defaultTimeLocale f s, all isSpace r]
+
+parseFormat :: String -> String -> [Day]
+parseFormat f s = [t | (t,r) <- readSTime True defaultTimeLocale f s, all isSpace r]
 
 -- | saves a csv compatable type to a file
 saveCSVFile :: (MonadIO m, CSV.ToRecord a) => FilePath -> [a] -> m ()

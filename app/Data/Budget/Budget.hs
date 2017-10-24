@@ -23,7 +23,7 @@ import Data.IxSet
 import Data.SafeCopy
 import Data.Time
 import GHC.Generics hiding (to)
-import Data.Yaml hiding ((.~))
+import Data.Aeson hiding ((.~))
 import qualified Data.Text as DT
 import qualified Data.Text as DT
 

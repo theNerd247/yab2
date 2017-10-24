@@ -10,9 +10,12 @@
     "build": "node build/build.js"
   },
   "dependencies": {
+    "axios": "^0.16.2",
     "chart.js": "^2.7.0",
     "element-ui": "^1.4.7",
     "json-loader": "^0.5.7",
+    "lodash": "^4.17.4",
+    "moment": "^2.19.1",
     "vue": "^2.5.2",
     "vue-chartjs": "^3.0.0",
     "vue-router": "^3.0.1"

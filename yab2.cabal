@@ -33,7 +33,11 @@ executable yab2
                      , cassava
                      , directory
                      , containers
+                     , snap
+                     , snap-core
+                     , snap-web-routes
                      , data-default
+                     , web-routes
                      , exceptions
                      , filepath
                      , ixset
@@ -45,7 +49,7 @@ executable yab2
                      , text
                      , time
                      , vector
-                     , yaml
+                     , aeson
   default-language:    Haskell2010
 
 --test-suite yab2-test
