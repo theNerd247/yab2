@@ -66,6 +66,7 @@ data BudgetUrl =
   BudgetStatuses
   | BudgetStatus Name Day Day
   | CreateBudget
+  | BudgetByName Name
   deriving (Eq,Ord,Show,Read,Generic)
 
 instance PathInfo ExpensesUrl
@@ -143,6 +144,12 @@ routeBudgetUrl CreateBudget = method POST $ do
   let newBudgetList = eitherDecode bdy
   liftIO . putStrLn . show $ bdy
   either withErr (insertBudgetList db) (newBudgetList :: Either String BudgetList)
+
+routeBudgetUrl (BudgetByName name) = method GET $ do
+  db <- asks $ view db
+  b <- getBudgetByName db name
+  sinfos  <- getStartInfoByName db name
+  asJSON . object $ ["items" .= b, "startInfo" .= sinfos]
 
 withErr :: String -> Handler b v ()
 withErr msg = do 

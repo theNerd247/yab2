@@ -128,6 +128,9 @@ instance (FromJSON a) => FromJSON (YabList a) where
     <*> o .: "items"
   parseJSON _ = mempty
 
+instance (FromJSON a, Indexable a, Ord a, Typeable a) => FromJSON (YabDB a) where
+  parseJSON = fmap fromList . parseJSON
+
 instance FromJSON StartInfo where
   parseJSON (Object o) = StartInfo
     <$> o .: "name"
@@ -179,6 +182,9 @@ instance HasYabList (YabList a) a where
 
 instance HasStartInfo (YabList a) where
   startInfo = yabListStartInfo
+
+instance (ToJSON a, Indexable a, Ord a, Typeable a) => ToJSON (YabDB a) where
+  toJSON = toJSON . toList
 
 instance Indexable StartInfo where
   empty = ixSet 
