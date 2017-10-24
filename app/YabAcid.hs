@@ -24,7 +24,7 @@ import Data.Default
 import Data.Budget
 import Data.SafeCopy
 import Data.Default.IxSet
-import GHC.Generics
+import GHC.Generics hiding (to)
 import Control.Lens hiding (Indexable)
 import Control.Monad.Reader.Class
 import Control.Monad.State.Class
@@ -78,32 +78,32 @@ upsertEs es = do
   where 
     upsertEs' db es = do
       let (newDB,dups) = upsertExpenses es smallDB
-      updateYabDB expenseDB (db `union` newDB)
+      expenseDB .= (db `union` newDB)
       return dups
       where
         smallDB = db @>=<= ((earliestExpense es)^.expenseDate, (latestExpense es)^.expenseDate)
     exs = DL.groupBy (\a b -> a^.name == b^.name) . DL.sortBy (\a b -> compare (a^.name) (b^.name)) $ es
 
 getSIByName :: Name -> Query YabAcid StartInfoDB
-getSIByName n = queryDBItems startInfoDB (@= n)
+getSIByName n = asks . view $ startInfoDB.to (@= n)
 
 getEsByDate :: Day -> Day -> Query YabAcid ExpenseDB
-getEsByDate start end = queryDBItems expenseDB (@>=<= (start,end))
+getEsByDate start end = asks . view $ expenseDB.to (@>=<= (start,end))
 
 getEsByAmount :: Amount -> Query YabAcid ExpenseDB
-getEsByAmount a = queryDBItems expenseDB (@= a)
+getEsByAmount a = asks . view $ expenseDB.to (@= a)
 
 getEsByReason :: String -> Query YabAcid ExpenseDB
-getEsByReason a = queryDBItems expenseDB (@= a)
+getEsByReason a = asks . view $ expenseDB.to (@= a)
 
 getEsByName :: Name -> Query YabAcid ExpenseDB
-getEsByName a = queryDBItems expenseDB (@= a)
+getEsByName a = asks . view $ expenseDB.to (@= a)
 
 getEsByBID :: BID -> Query YabAcid ExpenseDB
-getEsByBID a = queryDBItems expenseDB (@= a)
+getEsByBID a = asks . view $ expenseDB.to (@= a)
 
 getBByName :: Name -> Query YabAcid BudgetDB
-getBByName n = queryYabDB budgetDB >>= return . getEQ n
+getBByName n = asks . view $ budgetDB.to (@= n)
 
 $(makeAcidic ''YabAcid [
   'insertE
