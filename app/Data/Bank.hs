@@ -82,8 +82,8 @@ toExpense bName t = do
     & expenseDate .~ (t^.tDate)
     & expenseReason .~ (t^.tDesc)
     & amountType .~ case (c > 0) of
-      True -> Income
-      _ -> Expense ""
+      True -> AmountType ""
+      _ -> AmountType ""
     & amount .~ (c - d)
   where
     d = t^.tDebit . to num

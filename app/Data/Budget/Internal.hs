@@ -43,9 +43,7 @@ type StartInfoDB = YabDB StartInfo
 
 type StartInfoAuditDB = AuditDB StartInfo
 
-data AmountType = 
-    Income 
-  | Expense String
+newtype AmountType = AmountType String
   deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 data BudgetAmount = BudgetAmount
@@ -66,6 +64,8 @@ data YabList a = YabList
 
 makeClassy ''StartInfo
 
+makeClassy ''BudgetAmount
+
 $(deriveSafeCopy 0 'base ''AmountType)
 
 $(deriveSafeCopy 0 'base ''BudgetAmount)
@@ -76,15 +76,6 @@ $(deriveSafeCopy 0 'base ''YabList)
 
 class HasName m where
   name :: Lens' m Name
-
-class HasBudgetAmount a where
-  budgetAmount :: Lens' a BudgetAmount
-
-  amount :: Lens' a Amount
-  amount = budgetAmount . amount
-
-  amountType :: Lens' a AmountType
-  amountType = budgetAmount . amountType
 
 class HasYabDB m a | m -> a where
   yabDB :: Lens' m (YabDB a)
@@ -103,18 +94,14 @@ class BudgetAtPeriod a where
 
 instance Default BudgetAmount
 
-instance Default AmountType where
-  def = Income
+instance Default AmountType
 
 instance Default StartInfo
 
 instance (Default a) => Default (YabList a) 
 
 instance FromJSON AmountType where
-  parseJSON (String s)
-    | s == "income" = return Income
-    | otherwise = return $ Expense (DT.unpack s)
-  parseJSON _ = mempty
+  parseJSON = fmap AmountType . parseJSON
 
 instance FromJSON BudgetAmount where
   parseJSON (Object o) = BudgetAmount
@@ -143,28 +130,6 @@ instance Functor YabList where
     { _yabListStartInfo = _yabListStartInfo l
     , _items = fmap f (_items l)
     }
-
-instance HasBudgetAmount BudgetAmount where
-  budgetAmount = id
-  
-  amount = budgetAmount . (lens gt st)
-    where
-      st s a = BudgetAmount 
-        { _amount = toAmnt (_amountType s)
-        , _amountType = _amountType s
-        }
-        where
-        toAmnt Income = abs a
-        toAmnt _ = -1*(abs a)
-      gt = _amount
-
-  amountType = budgetAmount . (lens gt st)
-    where
-      st s t = BudgetAmount 
-        { _amount = _amount s
-        , _amountType = t
-        }
-      gt = _amountType
 
 instance HasName StartInfo where
   name = startInfoBName
@@ -197,8 +162,7 @@ instance ToJSON BudgetAmount where
   toJSON = object . budgetAmountJSON
 
 instance ToJSON AmountType where
-  toJSON Income = String $ DT.pack "income"
-  toJSON (Expense s) = String $ DT.pack s
+  toJSON (AmountType s) = toJSON s
 
 instance ToJSON StartInfo where
   toJSON = object . budgetStartJSON
