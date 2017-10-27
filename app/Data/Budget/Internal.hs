@@ -25,6 +25,7 @@ import Data.IxSet
 import Data.SafeCopy
 import Data.Monoid
 import Data.Default.Time
+import Data.BID
 import Data.Time
 import Data.Aeson hiding ((.~))
 import GHC.Generics hiding (to)
@@ -55,6 +56,7 @@ data StartInfo = StartInfo
   { _startInfoBName :: Name
   , _startDate :: Day
   , _startAmount :: Amount
+  , _startInfoBID :: BID
   } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 data YabList a = YabList
@@ -123,6 +125,7 @@ instance FromJSON StartInfo where
     <$> o .: "name"
     <*> o .: "startDate"
     <*> o .: "startAmount"
+    <*> o .: "id"
   parseJSON _ = mempty
 
 instance Functor YabList where
@@ -130,6 +133,9 @@ instance Functor YabList where
     { _yabListStartInfo = _yabListStartInfo l
     , _items = fmap f (_items l)
     }
+
+instance HasBID StartInfo where
+  bid = startInfoBID
 
 instance HasName StartInfo where
   name = startInfoBName
@@ -153,7 +159,8 @@ instance (ToJSON a, Indexable a, Ord a, Typeable a) => ToJSON (YabDB a) where
 
 instance Indexable StartInfo where
   empty = ixSet 
-    [ ixFun $ (:[]) . (view name)
+    [ ixFun $ (:[]) . (view bid) 
+    , ixFun $ (:[]) . (view name)
     , ixFun $ (:[]) . (view startDate)
     , ixFun $ (:[]) . (view startAmount)
     ]
@@ -181,6 +188,7 @@ budgetStartJSON b =
     ["name" .= (b^.name)
     ,"startDate" .= (b^.startDate)
     ,"startAmount" .= (b^.startAmount)
+    ,"id" .= (b^.bid)
     ]
 
 listToDB :: (Typeable a, Ord a, Indexable a) => YabList a -> YabDB a

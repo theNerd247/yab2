@@ -105,6 +105,15 @@ getEsByBID a = asks . view $ expenseDB.to (@= a)
 getBByName :: Name -> Query YabAcid BudgetDB
 getBByName n = asks . view $ budgetDB.to (@= n)
 
+updateB :: BudgetItem -> Update YabAcid ()
+updateB b = budgetDB %= updateIx (b^.bid) b
+
+updateE :: ExpenseItem -> Update YabAcid ()
+updateE e = expenseDB %= updateIx (e^.bid) e
+
+updateSI :: StartInfo -> Update YabAcid ()
+updateSI si = startInfoDB %= updateIx (si^.bid) si
+
 $(makeAcidic ''YabAcid [
   'insertE
   ,'insertB
@@ -120,6 +129,9 @@ $(makeAcidic ''YabAcid [
   ,'getEsByName
   ,'getEsByBID
   ,'getSIByName
+  ,'updateSI
+  ,'updateE
+  ,'updateB
   ])
 
 insertExpenseItem db e = do
@@ -161,6 +173,12 @@ getExpensesByName db = query' db . GetEsByName
 getExpensesByBID db = query' db . GetEsByBID
 
 getStartInfoByName db = query' db . GetSIByName
+
+updateBudgetItem db = update' db . UpdateB
+
+updateExpenseItem db = update' db . UpdateE
+
+updateStartInfo db = update' db . UpdateSI
 
 asYabList :: (MonadIO m, HasName a, Typeable a, Ord a, Indexable a, Default a) => YabAcidState -> Name -> (m (YabDB a)) -> m (Maybe (YabList a))
 asYabList db name ydbQuery = do

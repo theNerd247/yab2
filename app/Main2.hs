@@ -69,6 +69,8 @@ data BudgetUrl =
   | BudgetByName Name
   deriving (Eq,Ord,Show,Read,Generic)
 
+type BudgetData = ([BudgetItem],[StartInfo])
+
 instance PathInfo ExpensesUrl
 instance PathInfo BudgetUrl
 
@@ -140,21 +142,29 @@ routeBudgetUrl  (BudgetStatus name sdate edate) = method GET $ do
 
 routeBudgetUrl CreateBudget = method POST $ do
   db <- asks $ view db
-  bdy <- (readRequestBody 1024)
-  let newBudgetList = eitherDecode bdy
-  liftIO . putStrLn . show $ bdy
-  either withErr (insertBudgetList db) (newBudgetList :: Either String BudgetList)
+  withJSON $ insertBudgetList db
 
-routeBudgetUrl (BudgetByName name) = method GET $ do
-  db <- asks $ view db
-  b <- getBudgetByName db name
-  sinfos  <- getStartInfoByName db name
-  asJSON . object $ ["items" .= b, "startInfo" .= sinfos]
+routeBudgetUrl (BudgetByName name) = (method GET get) <|> (method PATCH patch)
+  where
+    get = do 
+      db <- asks $ view db
+      b <- getBudgetByName db name
+      sinfos  <- getStartInfoByName db name
+      asJSON . object $ ["items" .= b, "startInfo" .= sinfos]
+    patch = do
+      db <- asks $ view db
+      withJSON $ \b -> do
+        sequence_ $ updateBudgetItem db <$> b^._1
+        sequence_ $ updateStartInfo db <$> b^._2
 
 withErr :: String -> Handler b v ()
 withErr msg = do 
   modifyResponse $ setResponseCode 500
   asJSON $ object ["message" .= msg]
+
+withJSON :: (FromJSON a) => (a -> Handler b v ()) -> Handler b v a
+withJSON f =  eitherDecode <$> readRequestBody 1024 >>= either withErr f
+
 
 allowVueDev :: Handler b v ()
 allowVueDev = modifyResponse $ setHeader "Access-Control-Allow-Origin" "http://localhost:8080"

@@ -31,6 +31,7 @@ data BudgetItem = BudgetItem
   { _rate :: Rate
   , _budgetItemBudgetAmount :: BudgetAmount
   , _budgetName :: Name
+  , _budgetItemBID :: BID
   } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 type BudgetList = YabList BudgetItem
@@ -49,7 +50,8 @@ instance Default BudgetItem
 
 instance Indexable BudgetItem where
   empty = ixSet
-    [ ixFun $ (:[]) . (view budgetName)
+    [ ixFun $ (:[]) . (view bid)
+    , ixFun $ (:[]) . (view budgetName)
     , ixFun $ (:[]) . (view amount)
     , ixFun $ (:[]) . (view amountType)
     ]
@@ -58,6 +60,9 @@ instance BudgetAtPeriod BudgetItem where
   budgetAmountAtPeriod _ p = to gt
     where
       gt b = (b^.amount)*(fromIntegral . floor . toRational $ p `div` (b^.rate))
+
+instance HasBID BudgetItem where
+  bid = budgetItemBID
 
 instance HasName BudgetItem where
   name = budgetName
@@ -70,6 +75,7 @@ instance FromJSON BudgetItem where
     <$> o .: "rate" 
     <*> (parseJSON v)
     <*> o .: "name"
+    <*> o .: "id"
   parseJSON _ = mempty
 
 instance ToJSON BudgetItem where
@@ -77,4 +83,5 @@ instance ToJSON BudgetItem where
     budgetAmountJSON (bi^.budgetItemBudgetAmount)
     ++ ["rate" .= (bi^.rate)
        , "name" .= (bi^.name)
+       , "id" .= (bi^.bid)
        ]
