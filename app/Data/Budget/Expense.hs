@@ -29,7 +29,7 @@ import qualified Data.List as DL
 import qualified Data.Text as DT
 
 data ExpenseItem = ExpenseItem
-  { _expenseDate :: Day
+  { _expenseDate :: UTCTime
   , _expenseReason :: String
   , _expenseItemBudgetAmount :: BudgetAmount
   , _expenseBID :: BID

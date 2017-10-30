@@ -79,7 +79,7 @@ toExpense bName t = do
   return $ def
     & bid .~ bd
     & name .~ bName
-    & expenseDate .~ (t^.tDate)
+    & expenseDate .~ (UTCTime (t^.tDate) 0)
     & expenseReason .~ (t^.tDesc)
     & amountType .~ case (c > 0) of
       True -> AmountType ""

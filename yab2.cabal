@@ -31,19 +31,22 @@ executable yab2
                      , acid-state
                      , bytestring
                      , cassava
-                     , directory
                      , containers
                      , snap
+                     , errors
+                     , json-schema
                      , snap-core
-                     , snap-web-routes
                      , data-default
                      , web-routes
                      , exceptions
                      , filepath
                      , ixset
-                     , optparse-applicative
                      , hashable
                      , lens
+                     , rest-core
+                     , rest-types
+                     , rest-snap
+                     , transformers
                      , mtl
                      , safecopy
                      , text

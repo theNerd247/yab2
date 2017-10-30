@@ -37,6 +37,14 @@ resolver: lts-9.1
 # will not be run. This is useful for tweaking upstream packages.
 packages:
 - '.'
+- location:
+    git: git@github.com:theNerd247/rest
+    commit: 186d78255a2e56cfc9ac5ba653bfd8ad032f5d1e
+  subdirs: 
+    - rest-core
+    - rest-snap
+    - rest-types
+  extra-dep: true
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:
@@ -47,7 +55,6 @@ extra-deps:
   - heist-1.0.1.0
   - map-syntax-0.2.0.2
   - xmlhtml-0.2.5.1
-  - snap-web-routes-0.5.1.0 
 
 # Override default flag values for local packages and extra-deps
 flags: {}

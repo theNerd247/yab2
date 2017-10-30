@@ -54,7 +54,7 @@ data BudgetAmount = BudgetAmount
 
 data StartInfo = StartInfo
   { _startInfoBName :: Name
-  , _startDate :: Day
+  , _startDate :: UTCTime
   , _startAmount :: Amount
   , _startInfoBID :: BID
   } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
@@ -194,11 +194,11 @@ budgetStartJSON b =
 listToDB :: (Typeable a, Ord a, Indexable a) => YabList a -> YabDB a
 listToDB = fromList . (view items)
 
-dayToRate :: Day -> Day -> Rate
-dayToRate s = fromInteger . flip diffDays s
+dayToRate :: UTCTime -> UTCTime -> Rate
+dayToRate s = fromInteger . flip diffDays (utctDay s) . utctDay
 
-rateToDay :: Day -> Rate -> Day
-rateToDay s = flip addDays s . toInteger
+rateToDay :: UTCTime -> Rate -> UTCTime
+rateToDay s r = UTCTime (flip addDays (utctDay s) . toInteger $ r) 0
 
 -- runs a budget for "p" periods given a starting amount "start" and returns the
 -- final balance. 
@@ -208,6 +208,10 @@ getBalanceAtPeriod p b = (b^.startAmount) + (sum $ b^.items^..traverse.budgetAmo
 -- gets the budget balance from start to end periods (both inclusive)
 {-getBalancesBetween :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a) => Rate -> Rate -> (f a) -> [Amount]-}
 getBalancesBetween start end b = [start..end]^..traverse . to (flip getBalanceAtPeriod b)
+
+earliestStartInfo :: [StartInfo] -> Maybe StartInfo
+earliestStartInfo [] = Nothing
+earliestStartInfo xs = Just . head $ DL.sortOn (view startDate) xs
 
 -- returns the difference of the budget balance (b2 - b1) at each period between
 -- the start and end times
@@ -240,7 +244,7 @@ printBalances start end budget = sequence_ $ [start..end]^..traverse . to printB
 -- gets the budget balance for the current day (this uses utc time)
 currentBudgetBal :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a) => f a -> IO Amount
 currentBudgetBal b = do 
-  n <- utctDay <$> getCurrentTime
+  n <- getCurrentTime
   return $ getBalanceAtPeriod (dayToRate (b^.startDate) n) b
 
 -- updates each element by the given key using updateIx

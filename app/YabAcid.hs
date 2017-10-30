@@ -114,6 +114,12 @@ updateE e = expenseDB %= updateIx (e^.bid) e
 updateSI :: StartInfo -> Update YabAcid ()
 updateSI si = startInfoDB %= updateIx (si^.bid) si
 
+getAllBNames :: Query YabAcid [Name]
+getAllBNames = getAllBS >>= \bs -> return $ bs^..traversed._1
+
+getAllBS :: Query YabAcid [(Name,[BudgetItem])]
+getAllBS = asks . view $ budgetDB.to (groupBy :: BudgetDB -> [(Name,[BudgetItem])])
+
 $(makeAcidic ''YabAcid [
   'insertE
   ,'insertB
@@ -132,6 +138,8 @@ $(makeAcidic ''YabAcid [
   ,'updateSI
   ,'updateE
   ,'updateB
+  ,'getAllBS
+  ,'getAllBNames
   ])
 
 insertExpenseItem db e = do
@@ -158,6 +166,21 @@ insertBudgetList db es = do
   forM_ (es^.items) (insertBudgetItem db)
   insertStartInfo db (es^.startInfo)
 
+updateBudgetItem db b = do 
+  hist <- makeAudit b
+  update' db $ InsertBAudit hist
+  update' db $ UpdateB b
+
+updateExpenseItem db e = do 
+  hist <- makeAudit e
+  update' db $ InsertEAudit hist
+  update' db $ UpdateE e
+
+updateStartInfo db s = do 
+  hist <- makeAudit s
+  update' db $ InsertSAudit hist
+  update' db $ UpdateSI s
+
 mergeExpenses db = update' db . UpsertEs
 
 getBudgetByName db  = query' db . GetBByName
@@ -174,11 +197,9 @@ getExpensesByBID db = query' db . GetEsByBID
 
 getStartInfoByName db = query' db . GetSIByName
 
-updateBudgetItem db = update' db . UpdateB
+getAllBudgets db = query' db GetAllBS
 
-updateExpenseItem db = update' db . UpdateE
-
-updateStartInfo db = update' db . UpdateSI
+getAllBudgetNames db = query' db GetAllBNames
 
 asYabList :: (MonadIO m, HasName a, Typeable a, Ord a, Indexable a, Default a) => YabAcidState -> Name -> (m (YabDB a)) -> m (Maybe (YabList a))
 asYabList db name ydbQuery = do
@@ -186,11 +207,13 @@ asYabList db name ydbQuery = do
   msinfo <- getStartInfoByName db name
   mydb <- (@= name) <$> ydbQuery 
   return $ do
-    sinfo <- err . toList $ msinfo
-    ydb <- err . toList $ mydb
+    sinfo <- earliestStartInfo $ toList msinfo
     return $ def 
-        & items .~ ydb
-        & startInfo .~ DL.minimumBy (\a b -> (a^.startDate) `compare` (b^.startDate)) sinfo
-  where
-    err [] = Nothing
-    err xs = Just xs
+        & items .~ toList mydb
+        & startInfo .~ sinfo
+
+updateBudgetList :: (MonadIO m) => YabAcidState -> BudgetList -> m ()
+updateBudgetList db newItems = do
+  updateStartInfo db (newItems^.startInfo)
+  oldItems <- toList <$> (getBudgetByName db (newItems^.name))
+  forM_ (newItems^.items.to (DL.union oldItems)) (updateBudgetItem db)

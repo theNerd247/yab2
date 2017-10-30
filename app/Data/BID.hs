@@ -19,3 +19,6 @@ instance Hashable POSIXTime where
 
 newBID :: IO BID
 newBID = hash <$> getPOSIXTime
+
+setNewBID :: (HasBID a) => a -> IO a
+setNewBID x = (\b -> x & bid .~ b) <$> newBID
