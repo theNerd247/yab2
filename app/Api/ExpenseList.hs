@@ -3,7 +3,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Api.ExpenseList (resource) where
+module Api.ExpenseList (resource, WithExpenseList) where
 
 import Control.Lens hiding ((??),(!?))
 import Data.Budget
@@ -27,9 +27,9 @@ import qualified Rest.Resource as R
 
 type Identifier = Name
 
-type WithExpense = ReaderT Identifier YabApi
+type WithExpenseList = ReaderT Identifier YabApi
 
-resource :: Resource YabApi WithExpense Identifier () Void
+resource :: Resource YabApi WithExpenseList Identifier () Void
 resource = mkResourceReader
   { R.name = "expense-list"
   , R.schema = withListing () $ named [ ("name", singleBy id)] 
@@ -39,10 +39,10 @@ resource = mkResourceReader
   , R.update = Just update
   }
 
-get :: Handler WithExpense
+get :: Handler WithExpenseList
 get = mkIdHandler jsonO handler
   where
-    handler :: () -> Identifier -> ExceptT Reason_ WithExpense ExpenseList
+    handler :: () -> Identifier -> ExceptT Reason_ WithExpenseList ExpenseList
     handler _ name = do 
       db <- (lift . lift) (asks $ view db)
       (asYabList db name $ getExpensesByName db name) !? NotFound
@@ -72,10 +72,10 @@ create = mkInputHandler (jsonI . jsonO) handler
           insertExpenseList db newList'
           return newList'
           
-update :: Handler WithExpense
+update :: Handler WithExpenseList
 update = mkInputHandler (jsonI . jsonO) handler
   where
-    handler :: ExpenseList -> ExceptT Reason_ WithExpense ()
+    handler :: ExpenseList -> ExceptT Reason_ WithExpenseList ()
     handler bdata = do
       db <- (lift . lift) (asks $ view db)
       updateExpenseList db bdata
