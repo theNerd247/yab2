@@ -12,7 +12,7 @@ import Vue from 'vue'
 import BalancesGraph from './BalancesGraph.vue'
 import HomeCard from './HomeCard.vue'
 import _ from 'lodash'
-import { HTTP } from '@/shared/http-common'
+import { HTTP, baseURL } from '@/shared/http-common'
 import moment from 'moment'
 
 export default {
@@ -34,7 +34,7 @@ export default {
     httpGetStatus(){
 			let sdate = moment().subtract(30, 'days').format("YYYY-MM-DD");
 			let edate = moment().format("YYYY-MM-DD");
-			let query = "budget/budget-status/" + this.budgetName + "/" + sdate + "/" + edate;
+			let query = "/budget/name/"+this.budgetName+"/status/" + sdate + "/" + edate;
 
 			HTTP.get(query)
 				.then(response => {

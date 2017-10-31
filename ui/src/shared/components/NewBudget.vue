@@ -45,20 +45,26 @@ export default {
 	data  () {
 		return {
 			newBudget: {
-				name: '',
-				startAmount: null,
-        startDate: null,
-        items: [ {type: '', amount: null, rate: null, name: '' } ]
+        startInfo: {
+          name: '',
+          id: 0,
+          startAmount: null,
+          startDate: null,
+          name: '',
+        },
+        items: [ {id: 0, type: '', amount: null, rate: null, name: '' } ]
 			}
 		}
 	},
 	methods: {
     createNewBudget () { 
       _.remove(this.newBudget.items, x => x.amount === null || x.rate == null || x.rate < 0)
-      this.newBudget.startDate = moment(this.newBudget.startDate).format("YYYY-MM-DD");
+
+      this.newBudget.startInfo.startDate = moment(this.newBudget.startDate).format();
       this.newBudget.items = _.map(this.newBudget.items, x => {x.name = this.newBudget.name; return x});
+
       console.log(this.newBudget);
-      HTTP.post(baseURL + 'budget/create-budget', this.newBudget)
+      HTTP.post('budget', this.newBudget)
       .then(response => {
         this.$notify({
           title: 'Created new budget',
@@ -80,7 +86,7 @@ export default {
       this.newBudget.items = this.newBudget.items.splice(index,1);
     },
     addItem(){
-      this.newBudget.items.push( {type: '', amount: null, rate: null, name: '' });
+      this.newBudget.items.push( {id: 0, type: '', amount: null, rate: null, name: '' });
     }
 	}
 }

@@ -8,13 +8,13 @@
 			<el-col :span="12">
 				<el-row>
 					<h2>Start Info</h2>
-					<el-form :inline="true" v-for="(item, index) in startInfo" :key="index">
+					<el-form :inline="true">
 						<el-form-item label="Start Amount">
-							<el-input v-model.number="item.startAmount" type="number" placeholder="Amount"></el-input>
+							<el-input v-model.number="budgetData.startInfo.startAmount" type="number" placeholder="Amount"></el-input>
 						</el-form-item>
 						<el-form-item label="Start Date">
 							<el-date-picker
-								v-model="item.startDate"
+								v-model="budgetData.startInfo.startDate"
 								type="date"
 								format="yyyy-MM-dd"
 								placeholder="Budget Start Day">
@@ -55,7 +55,6 @@ export default {
 		return {
 			budgetData: null,
 			budgetName: this.$route.params.name,
-			startInfo: null
 		}
 	},
 	created () {
@@ -63,14 +62,13 @@ export default {
 	},
 	methods: {
 		httpGetBudget(){
-			let sdate = moment().subtract(30, 'days').format("YYYY-MM-DD");
-			let edate = moment().format("YYYY-MM-DD");
-			let query = baseURL+"budget/budget-by-name/" + this.budgetName;
+			let sdate = moment().subtract(30, 'days').format();
+			let edate = moment().format();
+			let query = "/budget/name/" + this.budgetName;
 
 			HTTP.get(query)
 				.then(response => {
-					this.budgetData = response.data.items;
-					this.startInfo = response.data.startInfo;
+					this.budgetData = response.data;
 				})
 				.catch(e => {
 					this.$notify.error({

@@ -115,10 +115,9 @@ updateSI :: StartInfo -> Update YabAcid ()
 updateSI si = startInfoDB %= updateIx (si^.bid) si
 
 getAllBNames :: Query YabAcid [Name]
-getAllBNames = getAllBS >>= \bs -> return $ bs^..traversed._1
-
-getAllBS :: Query YabAcid [(Name,[BudgetItem])]
-getAllBS = asks . view $ budgetDB.to (groupBy :: BudgetDB -> [(Name,[BudgetItem])])
+getAllBNames = do 
+  bs <- asks . view $ startInfoDB
+  return $ (groupBy bs)^..traversed._1
 
 $(makeAcidic ''YabAcid [
   'insertE
@@ -138,7 +137,6 @@ $(makeAcidic ''YabAcid [
   ,'updateSI
   ,'updateE
   ,'updateB
-  ,'getAllBS
   ,'getAllBNames
   ])
 
@@ -197,8 +195,6 @@ getExpensesByBID db = query' db . GetEsByBID
 
 getStartInfoByName db = query' db . GetSIByName
 
-getAllBudgets db = query' db GetAllBS
-
 getAllBudgetNames db = query' db GetAllBNames
 
 asYabList :: (MonadIO m, HasName a, Typeable a, Ord a, Indexable a, Default a) => YabAcidState -> Name -> (m (YabDB a)) -> m (Maybe (YabList a))
@@ -217,3 +213,9 @@ updateBudgetList db newItems = do
   updateStartInfo db (newItems^.startInfo)
   oldItems <- toList <$> (getBudgetByName db (newItems^.name))
   forM_ (newItems^.items.to (DL.union oldItems)) (updateBudgetItem db)
+
+updateExpenseList :: (MonadIO m) => YabAcidState -> ExpenseList -> m ()
+updateExpenseList db newItems = do
+  updateStartInfo db (newItems^.startInfo)
+  oldItems <- toList <$> (getExpensesByName db (newItems^.name))
+  forM_ (newItems^.items.to (DL.union oldItems)) (updateExpenseItem db)

@@ -12,18 +12,19 @@
 module Data.Budget.Budget where
 
 import Control.Lens hiding ((.=),Indexable)
-import Data.Audit
 import Data.Acid
+import Data.Aeson hiding ((.~))
+import Data.Audit
 import Data.BID
 import Data.Budget.Internal
 import Data.Data
-import Data.Default.Time
 import Data.Default
+import Data.Default.Time
 import Data.IxSet
+import Data.JSON.Schema hiding (Proxy, Object)
 import Data.SafeCopy
 import Data.Time
 import GHC.Generics hiding (to)
-import Data.Aeson hiding ((.~))
 import qualified Data.Text as DT
 import qualified Data.Text as DT
 
@@ -33,6 +34,8 @@ data BudgetItem = BudgetItem
   , _budgetName :: Name
   , _budgetItemBID :: BID
   } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+
+type BudgetStatusItem = (UTCTime, Amount, Amount)
 
 type BudgetList = YabList BudgetItem
 
@@ -70,6 +73,9 @@ instance HasName BudgetItem where
 instance HasBudgetAmount BudgetItem where
   budgetAmount = budgetItemBudgetAmount
   
+instance JSONSchema BudgetItem where
+  schema = gSchema
+
 instance FromJSON BudgetItem where
   parseJSON v@(Object o) = BudgetItem 
     <$> o .: "rate" 

@@ -14,23 +14,24 @@ module Data.Budget.Internal where
 
 import Control.Lens hiding ((.=),Indexable)
 import Control.Monad.Reader (asks)
-import Control.Monad.State (get,put,modify)
 import Control.Monad.Reader.Class
+import Control.Monad.State (get,put,modify)
 import Control.Monad.State.Class
 import Data.Acid
-import Data.Data
-import Data.Audit
-import Data.Default
-import Data.IxSet
-import Data.SafeCopy
-import Data.Monoid
-import Data.Default.Time
-import Data.BID
-import Data.Time
 import Data.Aeson hiding ((.~))
+import Data.Audit
+import Data.BID
+import Data.Data
+import Data.Default
+import Data.Default.Time
+import Data.IxSet
+import Data.JSON.Schema hiding (Proxy, Object)
+import Data.Monoid
+import Data.SafeCopy
+import Data.Time
 import GHC.Generics hiding (to)
-import qualified Data.Text as DT
 import qualified Data.List as DL
+import qualified Data.Text as DT
 
 type Amount = Double
 
@@ -113,7 +114,7 @@ instance FromJSON BudgetAmount where
 
 instance (FromJSON a) => FromJSON (YabList a) where
   parseJSON v@(Object o) = YabList
-    <$> (parseJSON v)
+    <$> o .: "startInfo"
     <*> o .: "items"
   parseJSON _ = mempty
 
@@ -154,6 +155,19 @@ instance HasYabList (YabList a) a where
 instance HasStartInfo (YabList a) where
   startInfo = yabListStartInfo
 
+instance JSONSchema AmountType where
+  schema = gSchema
+
+instance JSONSchema BudgetAmount where
+  schema = gSchema
+
+instance JSONSchema StartInfo where
+  schema = gSchema
+
+
+instance (JSONSchema a) => JSONSchema (YabList a) where
+  schema = gSchema
+
 instance (ToJSON a, Indexable a, Ord a, Typeable a) => ToJSON (YabDB a) where
   toJSON = toJSON . toList
 
@@ -176,8 +190,9 @@ instance ToJSON StartInfo where
 
 instance (ToJSON a, HasBudgetAmount a) => ToJSON (YabList a) where 
   toJSON b = object $
-    budgetStartJSON (b^.yabListStartInfo)
-    ++ ["items" .= toJSON (b^.items)]
+    [ "items" .= toJSON (b^.items)
+    , "startInfo" .= toJSON (b^.startInfo)
+    ]
 
 budgetAmountJSON a =
     ["amount" .= (a^.amount)
@@ -215,10 +230,10 @@ earliestStartInfo xs = Just . head $ DL.sortOn (view startDate) xs
 
 -- returns the difference of the budget balance (b2 - b1) at each period between
 -- the start and end times
-compareBudgetsBetween :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a, BudgetAtPeriod b, HasStartInfo (g b), HasYabList (g b) b) => Rate -> Rate -> (f a) -> (g b) -> [(Amount,Amount,Rate)]
-compareBudgetsBetween start end b1 b2 = [start..end]^..traverse . to compare
-  where
-    compare p = ((getBalanceAtPeriod p b1), (getBalanceAtPeriod p b2), p)
+compareBudgetsBetween :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a, BudgetAtPeriod b, HasStartInfo (g b), HasYabList (g b) b) => Rate -> Rate -> (f a) -> (g b) -> [(Rate,Amount,Amount)]
+compareBudgetsBetween start end b1 b2 = [start..end]^..traverse . to (\t -> compareBudgetsOn t b1 b2)
+
+compareBudgetsOn p b1 b2 = (p,(getBalanceAtPeriod p b1), (getBalanceAtPeriod p b2))
 
 -- get's the first period where the budget balance is <= 0
 getEmptyDate :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a) => f a -> Rate

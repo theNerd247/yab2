@@ -12,19 +12,20 @@
 module Data.Budget.Expense where
 
 import Control.Lens hiding ((.=),Indexable)
-import Data.Audit
 import Data.Acid
+import Data.Aeson hiding ((.~))
+import Data.Audit
 import Data.BID
 import Data.Budget.Internal
-import Data.Default.IxSet
 import Data.Data
-import Data.Default.Time
 import Data.Default
+import Data.Default.IxSet
+import Data.Default.Time
 import Data.IxSet
+import Data.JSON.Schema hiding (Proxy, Object)
 import Data.SafeCopy
 import Data.Time
 import GHC.Generics hiding (to)
-import Data.Aeson hiding ((.~))
 import qualified Data.List as DL
 import qualified Data.Text as DT
 
@@ -83,6 +84,9 @@ instance Indexable ExpenseItem where
     , ixFun $ (:[]) . (view amountType)
     , ixFun $ (:[]) . (view amount)
     ]
+
+instance JSONSchema ExpenseItem where
+  schema = gSchema
 
 instance ToJSON ExpenseItem where
   toJSON ei = object $

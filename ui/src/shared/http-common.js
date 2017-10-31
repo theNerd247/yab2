@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const baseURL = '/';
+const baseURL = '/yab/v1.0';
 
 const HTTP = axios.create({
   baseURL: baseURL,
