@@ -23,6 +23,7 @@ import Data.Time
 import Data.Default.Time
 import Data.IxSet
 import Data.Default
+import qualified Data.AuditMigration as AM
 import Data.BID
 import Data.Foldable (find)
 import Control.Lens hiding ((.=), Indexable)
@@ -44,7 +45,16 @@ type AuditDB a = IxSet (Audit a)
 
 $(deriveSafeCopy 0 'base ''AuditAction)
 
-$(deriveSafeCopy 0 'base ''Audit)
+$(deriveSafeCopy 1 'extension ''Audit)
+
+instance (SafeCopy a) => Migrate (Audit a) where
+  type MigrateFrom (Audit a) = AM.Audit_v0 a
+  migrate a = Audit 
+    { _modTime = AM._modTime a
+    , _auditBID = AM._auditBID a
+    , _modData = AM._modData a
+    , _auditAction = Modify
+    }
 
 class HasAudit m a | m -> a where
   audit :: Lens' m (Audit a)
