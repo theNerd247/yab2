@@ -34,25 +34,30 @@ export default {
     httpGetStatus(){
 			let sdate = moment().subtract(30, 'days').format("YYYY-MM-DD");
 			let edate = moment().format("YYYY-MM-DD");
-			let query = "/budget/name/"+this.budgetName+"/status/" + sdate + "/" + edate;
+			let query = "/budget/name/"+this.budgetName+"/status/between";
 
-			HTTP.get(query)
-				.then(response => {
-					this.budgetStatus = response.data;
-					this.makeBudgetData();
-				})
-				.catch(e => {
-					this.$notify.error({
-						title: 'Error',
-						message: 'Could not get budget data at: ' + query,
-            duration: 0
-					})
-				});
+			HTTP.get(query, {
+        params: { 
+          sdate,
+          edate
+        }
+      })
+      .then(response => {
+        this.budgetStatus = response.data;
+        this.makeBudgetData();
+      })
+      .catch(e => {
+        this.$notify.error({
+          title: 'Error',
+          message: 'Could not get budget data at: ' + query,
+          duration: 0
+        })
+      });
 		},
 		makeBudgetData () {
-			let bs = _.map(this.budgetStatus, x => x[0]);
-			let es = _.map(this.budgetStatus, x => x[1]);
-			let ds = _.map(this.budgetStatus, x => x[2]);
+			let ds = _.map(this.budgetStatus, x => moment(x[0]).format("YYYY-MM-DD"));
+			let bs = _.map(this.budgetStatus, x => x[1]);
+			let es = _.map(this.budgetStatus, x => x[2]);
 
 			this.balancesData = {
 				labels: ds,

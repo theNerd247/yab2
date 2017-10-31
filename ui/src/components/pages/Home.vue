@@ -11,7 +11,7 @@
   <el-col :span="24">
     <el-row type="flex" justify="space-around" :gutter="20">
       <el-col :span="8">
-        <budget-graph></budget-graph>
+        <budget-graph budgetName="tst"></budget-graph>
       </el-col>
 
       <el-col :span="8">
