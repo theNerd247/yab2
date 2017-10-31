@@ -31,6 +31,7 @@ import Control.Monad.State.Class
 import Control.Monad.IO.Class
 import Data.Foldable (forM_,fold)
 import Data.Traversable (forM)
+import Data.List ((\\))
 import qualified Data.Map as DM
 import qualified Data.List as DL
 
@@ -119,6 +120,15 @@ getAllBNames = do
   bs <- asks . view $ startInfoDB
   return $ (groupBy bs)^..traversed._1
 
+deleteBByBID :: BID -> Update YabAcid ()
+deleteBByBID bid = budgetDB %= deleteIx bid
+
+deleteEByBID :: BID -> Update YabAcid ()
+deleteEByBID bid = expenseDB %= deleteIx bid
+
+deleteSIByBID :: BID -> Update YabAcid ()
+deleteSIByBID bid = startInfoDB %= deleteIx bid
+
 $(makeAcidic ''YabAcid [
   'insertE
   ,'insertB
@@ -138,22 +148,25 @@ $(makeAcidic ''YabAcid [
   ,'updateE
   ,'updateB
   ,'getAllBNames
+  ,'deleteBByBID
+  ,'deleteEByBID
+  ,'deleteSIByBID
   ])
 
 insertExpenseItem db e = do
   hist <- makeAudit e
   update' db $ InsertE e
-  update' db $ InsertEAudit hist
+  update' db $ InsertEAudit $ hist & auditAction .~ Create
 
 insertBudgetItem db e = do
   hist <- makeAudit e
   update' db $ InsertB e
-  update' db $ InsertBAudit hist
+  update' db $ InsertBAudit $ hist & auditAction .~ Create
 
 insertStartInfo db s = do
   hist <- makeAudit s
   update' db $ InsertSI s
-  update' db $ InsertSAudit hist
+  update' db $ InsertSAudit $ hist & auditAction .~ Create
 
 -- inserts a list of expense items into the db and adds audits to the expenses
 insertExpenseList db es = do
@@ -166,18 +179,33 @@ insertBudgetList db es = do
 
 updateBudgetItem db b = do 
   hist <- makeAudit b
-  update' db $ InsertBAudit hist
+  update' db $ InsertBAudit $ hist & auditAction .~ Modify
   update' db $ UpdateB b
 
 updateExpenseItem db e = do 
   hist <- makeAudit e
-  update' db $ InsertEAudit hist
+  update' db $ InsertEAudit $ hist & auditAction .~ Modify
   update' db $ UpdateE e
 
 updateStartInfo db s = do 
   hist <- makeAudit s
-  update' db $ InsertSAudit hist
+  update' db $ InsertSAudit $ hist & auditAction .~ Modify
   update' db $ UpdateSI s
+
+deleteBudgetItem db b = do
+  hist <- makeAudit b
+  update' db $ InsertBAudit $ hist & auditAction .~ Delete
+  update' db $ DeleteBByBID (b^.bid)
+
+deleteExpenseItem db b = do
+  hist <- makeAudit b
+  update' db $ InsertEAudit $ hist & auditAction .~ Delete
+  update' db $ DeleteEByBID (b^.bid)
+
+deleteStartInfo db b = do
+  hist <- makeAudit b
+  update' db $ InsertSAudit $ hist & auditAction .~ Delete
+  update' db $ DeleteSIByBID (b^.bid)
 
 mergeExpenses db = update' db . UpsertEs
 
@@ -212,10 +240,20 @@ updateBudgetList :: (MonadIO m) => YabAcidState -> BudgetList -> m ()
 updateBudgetList db newItems = do
   updateStartInfo db (newItems^.startInfo)
   oldItems <- toList <$> (getBudgetByName db (newItems^.name))
-  forM_ (newItems^.items.to (DL.union oldItems)) (updateBudgetItem db)
+  let updated = DL.intersectBy (\a b -> a^.bid == b^.bid) (newItems^.items) oldItems
+  let inserted = (newItems^.items) \\ oldItems
+  let deleted = oldItems \\ (newItems^.items)
+  forM_ updated $ updateBudgetItem db
+  forM_ inserted $ insertBudgetItem db
+  forM_ deleted $ deleteBudgetItem db
 
 updateExpenseList :: (MonadIO m) => YabAcidState -> ExpenseList -> m ()
 updateExpenseList db newItems = do
   updateStartInfo db (newItems^.startInfo)
   oldItems <- toList <$> (getExpensesByName db (newItems^.name))
-  forM_ (newItems^.items.to (DL.union oldItems)) (updateExpenseItem db)
+  let updated = DL.intersectBy (\a b -> a^.bid == b^.bid) (newItems^.items) oldItems
+  let inserted = (newItems^.items) \\ oldItems
+  let deleted = oldItems \\ (newItems^.items)
+  forM_ updated $ updateExpenseItem db
+  forM_ inserted $ insertExpenseItem db
+  forM_ deleted $ deleteExpenseItem db
