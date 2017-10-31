@@ -3,7 +3,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Api.Budget (resource, WithBudget) where
+module Api.ExpenseList (resource) where
 
 import Control.Lens hiding ((??),(!?))
 import Data.Budget
@@ -25,42 +25,43 @@ import Rest
 import Rest.Types.Void
 import qualified Rest.Resource as R
 
-type WithBudget = ReaderT Name YabApi
+type Identifier = Name
 
-resource :: Resource YabApi WithBudget Name () Void
+type WithExpense = ReaderT Identifier YabApi
+
+resource :: Resource YabApi WithExpense Identifier () Void
 resource = mkResourceReader
-  { R.name = "budget"
-  , R.schema = withListing () $ named [ ("name", singleBy id) ] 
+  { R.name = "expense-list"
+  , R.schema = withListing () $ named [ ("name", singleBy id)] 
   , R.list = const list
   , R.get = Just get
   , R.create = Just create
   , R.update = Just update
   }
 
-get :: Handler WithBudget
+get :: Handler WithExpense
 get = mkIdHandler jsonO handler
   where
-    handler :: () -> Name -> ExceptT Reason_ WithBudget BudgetList
+    handler :: () -> Identifier -> ExceptT Reason_ WithExpense ExpenseList
     handler _ name = do 
       db <- (lift . lift) (asks $ view db)
-      bdb <- (asYabList db name $ getBudgetByName db name) !? NotAllowed
-      return bdb 
+      (asYabList db name $ getExpensesByName db name) !? NotFound
 
 list :: ListHandler YabApi
 list = mkListing jsonO $ \range -> do
   db <- (asks $ view db)
   names <- getAllBudgetNames db
   forM names $ \name -> do
-    b <- asYabList db name $ getBudgetByName db name
-    return $ b & lifted.items %~ (take (count range) . drop (offset range))
+    is <- asYabList db name $ getExpensesByName db name
+    return $ is & lifted.items %~ (take (count range) . drop (offset range))
 
 create :: Handler YabApi
 create = mkInputHandler (jsonI . jsonO) handler
   where
-    handler :: BudgetList -> ExceptT Reason_ YabApi BudgetList
+    handler :: ExpenseList -> ExceptT Reason_ YabApi ExpenseList
     handler newList = do
       db <- (lift) (asks $ view db)
-      be <- getBudgetByName db (newList^.name)
+      be <- getExpensesByName db (newList^.name)
       case (Data.IxSet.null be) of
         False -> throwE NotAllowed
         _ -> do 
@@ -68,13 +69,13 @@ create = mkInputHandler (jsonI . jsonO) handler
           si <- liftIO $ setNewBID (newList^.startInfo)
           is <- liftIO $ forM (newList^.items) setNewBID
           let newList' = newList & startInfo .~ si & items .~ is
-          insertBudgetList db newList'
+          insertExpenseList db newList'
           return newList'
           
-update :: Handler WithBudget
+update :: Handler WithExpense
 update = mkInputHandler (jsonI . jsonO) handler
   where
-    handler :: BudgetList -> ExceptT Reason_ WithBudget ()
+    handler :: ExpenseList -> ExceptT Reason_ WithExpense ()
     handler bdata = do
       db <- (lift . lift) (asks $ view db)
-      updateBudgetList db bdata
+      updateExpenseList db bdata

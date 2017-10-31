@@ -1,11 +1,11 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Api.Budget.Status (resource) where
+module Api.BudgetList.Status (resource) where
 
-import Api.Budget (WithBudget)
+import Api.ApiTypes
+import Api.BudgetList (WithBudget)
+import Api.ByRange
 import Control.Error.Util ((??),(!?))
 import Control.Lens hiding ((??),(!?))
 import Control.Monad (forM)
@@ -15,36 +15,18 @@ import Control.Monad.Trans.Except (ExceptT, throwE)
 import Data.Aeson
 import Data.Budget
 import Data.Data
-import Rest.Dictionary.Types
 import Data.IxSet
 import Data.JSON.Schema hiding (Proxy)
-import Data.JSON.Schema.Combinators (value)
 import GHC.Generics hiding (to)
+import Rest
+import Rest.Dictionary.Types
 import Rest.Types.Info
 import YabAcid
-import qualified Data.Text as T
 import qualified Data.List as DL
-
-import Api.ApiTypes
-import Rest
-import Rest.Types.Void
+import qualified Data.Text as T
 import qualified Rest.Resource as R
 
 data Identifier = ByDate Day | ByRange
-
-data DayRange = DayRange
-  { sdate :: Day
-  , edate :: Day
-  } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
-
-instance ToJSON DayRange
-instance FromJSON DayRange
-
-instance JSONSchema Day where
-  schema _ = value
-
-instance JSONSchema DayRange where
-  schema = gSchema
 
 type WithStatus = ReaderT Identifier WithBudget
 
@@ -58,13 +40,6 @@ resource = mkResourceReader
   , R.get = Just get
   , R.list = const list
   }
-
-dayRangeParam = mkPar $ Param ["sdate","edate"] parse
-  where
-    parse [Nothing, Nothing] = Right Nothing
-    parse [Just _, Nothing] = Left $ MissingField "edate"
-    parse [Nothing, Just _] = Left $ MissingField "sdate"
-    parse [Just s, Just e] = Right . Just $ DayRange (read s) (read e)
 
 get :: Handler WithStatus
 get = mkHandler (dayRangeParam . jsonO) $ \env -> ask >>= handler env

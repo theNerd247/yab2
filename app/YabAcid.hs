@@ -87,7 +87,7 @@ upsertEs es = do
 getSIByName :: Name -> Query YabAcid StartInfoDB
 getSIByName n = asks . view $ startInfoDB.to (@= n)
 
-getEsByDate :: Day -> Day -> Query YabAcid ExpenseDB
+getEsByDate :: UTCTime -> UTCTime -> Query YabAcid ExpenseDB
 getEsByDate start end = asks . view $ expenseDB.to (@>=<= (start,end))
 
 getEsByAmount :: Amount -> Query YabAcid ExpenseDB

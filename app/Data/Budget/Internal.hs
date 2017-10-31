@@ -215,6 +215,9 @@ dayToRate s = fromInteger . flip diffDays (utctDay s) . utctDay
 rateToDay :: UTCTime -> Rate -> UTCTime
 rateToDay s r = UTCTime (flip addDays (utctDay s) . toInteger $ r) 0
 
+dayToDate :: Day -> UTCTime
+dayToDate d = UTCTime d 0
+
 -- runs a budget for "p" periods given a starting amount "start" and returns the
 -- final balance. 
 {-getBalanceAtPeriod :: (BudgetAtPeriod a, HasStartInfo (f a), Traversal' (f a) a) => Rate -> (f a) -> Amount-}
