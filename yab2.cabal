@@ -39,8 +39,10 @@ executable yab2
                      , data-default
                      , web-routes
                      , exceptions
+                     , pureMD5
                      , filepath
                      , ixset
+                     , cereal
                      , hashable
                      , lens
                      , rest-core

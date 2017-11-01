@@ -13,15 +13,19 @@ import Api.ApiTypes
 import YabAcid
 import Rest.Dictionary.Types
 import qualified Rest.Resource as R
+import Rest.Types.Info
 
 type Identifier = BID
 
 type WithExpenseItem = ReaderT Identifier WithExpenseList
 
+instance Info BID where
+  describe _ = "bid"
+
 resource :: Resource WithExpenseList WithExpenseItem Identifier Void Void
 resource = mkResourceReader
   { R.name = "expense"
-  , R.schema = noListing $ named [("id",singleRead id)]
+  , R.schema = noListing $ named [("id",singleBy BID)]
   , R.create = Just create
   , R.get = Just get
   }
@@ -30,9 +34,6 @@ get :: Handler WithExpenseItem
 get = mkIdHandler jsonO $ \_ id -> do
   db <- (lift . lift . lift) (asks $ view db)
   nm <- (lift . lift) ask
-  liftIO $ putStrLn . show $ id
-  es <- getExpensesByName db nm
-  liftIO . putStrLn . show $ toList es
   getOne <$> getExpensesByBID db id
 
 create :: Handler WithExpenseList

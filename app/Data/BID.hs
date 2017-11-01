@@ -1,12 +1,26 @@
 {-# LANGUAGE TypeSynonymInstances  #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module Data.BID where
 
-import Data.Time.Clock.POSIX
 import Control.Lens
-import Data.Hashable
+import Data.Aeson
+import Data.Default
+import Data.Data
+import Data.SafeCopy
+import Data.Digest.Pure.MD5
+import Data.Time.Clock.POSIX
+import GHC.Generics
+import Data.JSON.Schema hiding (Proxy, Object)
+import qualified Data.BIDMigration as BM
+import qualified Data.Serialize as S
 
-type BID = Int
+newtype BID = BID String
+  deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 class HasBID a where
   bid :: Lens' a BID
@@ -14,11 +28,27 @@ class HasBID a where
 instance HasBID BID where
   bid = id
 
-instance Hashable POSIXTime where
-  hashWithSalt = hashUsing fromEnum 
+instance S.Serialize POSIXTime where
+  put = S.put . toRational
+  get = fromRational <$> S.get
 
 newBID :: IO BID
-newBID = hash <$> getPOSIXTime
+newBID = (BID . show . md5 . S.encodeLazy) <$> getPOSIXTime
 
 setNewBID :: (HasBID a) => a -> IO a
 setNewBID x = (\b -> x & bid .~ b) <$> newBID
+
+$(deriveSafeCopy 1 'extension ''BID)
+
+instance Migrate BID where
+  type MigrateFrom BID = BM.BID_v0
+  migrate = BID . show . md5 . S.encodeLazy
+
+instance FromJSON BID
+
+instance ToJSON BID
+
+instance Default BID
+
+instance JSONSchema BID where
+  schema = gSchema

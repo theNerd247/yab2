@@ -51,7 +51,7 @@ instance (SafeCopy a) => Migrate (Audit a) where
   type MigrateFrom (Audit a) = AM.Audit_v0 a
   migrate a = Audit 
     { _modTime = AM._modTime a
-    , _auditBID = AM._auditBID a
+    , _auditBID = migrate . AM._auditBID $ a
     , _modData = AM._modData a
     , _auditAction = Modify
     }
