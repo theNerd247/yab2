@@ -42,13 +42,14 @@
 </template>
 
 <script>
-  import Vue from 'vue'
+import Vue from 'vue'
 import BudgetGraph from '@/shared/components/BudgetsGraph.vue'
 import StatusChart from '@/shared/components/StatusChart.vue'
 import UploadTransaction from '@/shared/components/UploadTransaction.vue'
 import AddExpense from '@/shared/components/AddExpense.vue'
 import RecentExpenses from '@/shared/components/RecentExpenses.vue'
 import NewBudget from '@/shared/components/NewBudget.vue'
+import { HTTP } from '@/shared/http-common.js'
 
 export default {
   components: {
@@ -59,7 +60,18 @@ export default {
     RecentExpenses,
     NewBudget
   },
+  data () {
+    return {
+      budgets: []
+    }
+  },
   name: 'Vue',
+  created () {
+    HTTP.get("budget-list")
+      .then(response => {
+        this.budgets = response.data.items;
+      });
+  }
 }
 </script>
 

@@ -38,9 +38,7 @@ export default {
 			return _.truncate(reason,{length: 15, separator: ' '});
 		},
 		httpGetExpenses(){
-			let sdate = moment().subtract(30, 'days').format("YYYY-MM-DD");
-			let edate = moment().format("YYYY-MM-DD");
-			let query = baseURL+"expenses/by-date/" + sdate + "/" + edate;
+			let query = "expenses/latest/"
 
 			HTTP.get(query)
 				.then(response => {
