@@ -1,6 +1,14 @@
 <template>
 	<el-row>
-		<el-row><h1>Budget: {{ budgetName }}</h1></el-row>
+		<el-row>
+      <el-col :span="22">
+      <h1>Budget: {{ budgetName }}</h1>
+      </el-col>
+      <el-col :span="2">
+        <el-button @click=updateBudget()>Update Budget</el-button>
+      </el-col>
+    </el-row>
+
 		<el-row :gutter="20">
 			<el-col :span="12">
 				<budgets-graph :budget-name="budgetName"></budgets-graph>
@@ -22,7 +30,7 @@
 						</el-form-item>
 					</el-form>
 					<h2>Budget Items</h2>
-					<el-form :inline="true" v-for="(item, index) in budgetData" :key="index">
+					<el-form :inline="true" v-for="(item, index) in budgetData.items" :key="index">
 						<el-form-item label="Name">
 							<el-input v-model="item.type" placeholder="Item Type"></el-input>
 						</el-form-item>
@@ -55,6 +63,7 @@ export default {
 		return {
 			budgetData: null,
 			budgetName: this.$route.params.name,
+			query: "/budget-list/name/" + this.$route.params.name
 		}
 	},
 	created () {
@@ -64,9 +73,8 @@ export default {
 		httpGetBudget(){
 			let sdate = moment().subtract(30, 'days').format();
 			let edate = moment().format();
-			let query = "/budget/name/" + this.budgetName;
 
-			HTTP.get(query)
+			HTTP.get(this.query)
 				.then(response => {
 					this.budgetData = response.data;
 				})
@@ -77,7 +85,25 @@ export default {
 						duration: 0
 					})
 				});
-		}
+		},
+    updateBudget() {
+      HTTP.put(this.query, this.budgetData)
+      .then(response => {
+        this.$notify({
+          title: 'Updated Budget',
+          type: 'success',
+          duration: 0
+        })
+      })
+      .catch(e => {
+        this.$notify.error({
+          title: 'Error',
+          message: 'Could not update budget:\n' + JSON.stringify(e.response.data),
+          duration: 0
+        })
+      });
+
+    }
 	}
 }
 </script>

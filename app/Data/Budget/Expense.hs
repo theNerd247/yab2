@@ -111,7 +111,7 @@ upsertExpenses es db = foldr upsertE (def,[]) es
     compareDups e (x:xs) = (e^.expenseDate) == (x^.expenseDate) && (e^.amount) == (x^.amount)
 
 upsertExpense :: ExpenseItem -> ExpenseDB -> Either ExpenseItem [ExpenseItem]
-upsertExpense e db = upsertExpense' e (expenseDuplicates e db)
+upsertExpense e db = upsertExpense' e (expenseDuplicates e $ db @= (e^.name))
   where
     upsertExpense' e [] = Left $ e
     upsertExpense' e dups = Right $ e : dups

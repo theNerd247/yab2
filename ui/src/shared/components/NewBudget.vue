@@ -3,14 +3,14 @@
 		<el-button slot="action" @click="createNewBudget" type="info" style="float: right;"><i class="el-icon-plus"></i> Add</el-button>
 		<el-form slot="content">
 			<el-form-item>
-				<el-input v-model="newBudget.name" placeholder="Budget Name"></el-input>
+				<el-input v-model="newBudget.startInfo.name" placeholder="Budget Name"></el-input>
 			</el-form-item>
 			<el-form-item>
-				<el-input v-model.number="newBudget.startAmount" type="number" placeholder="Start Amount"></el-input>
+				<el-input v-model.number="newBudget.startInfo.startAmount" type="number" placeholder="Start Amount"></el-input>
 			</el-form-item>
       <el-form-item>
            <el-date-picker
-            v-model="newBudget.startDate"
+            v-model="newBudget.startInfo.startDate"
             type="date"
             format="yyyy-MM-dd"
             placeholder="Budget Start Day">
@@ -47,12 +47,11 @@ export default {
 			newBudget: {
         startInfo: {
           name: '',
-          id: 0,
-          startAmount: null,
-          startDate: null,
-          name: '',
+          id: '',
+          startAmount: 0,
+          startDate: moment(),
         },
-        items: [ {id: 0, type: '', amount: null, rate: null, name: '' } ]
+        items: []
 			}
 		}
 	},
@@ -64,11 +63,11 @@ export default {
       this.newBudget.items = _.map(this.newBudget.items, x => {x.name = this.newBudget.name; return x});
 
       console.log(this.newBudget);
-      HTTP.post('budget', this.newBudget)
+      HTTP.post('budget-list', this.newBudget)
       .then(response => {
         this.$notify({
           title: 'Created new budget',
-          message: this.newBudget.name,
+          message: response.data.startInfo.name,
           type: 'success',
           duration: 0
         })
@@ -76,7 +75,7 @@ export default {
       .catch(e => {
         this.$notify.error({
           title: 'Error',
-          message: 'Could not create new budget',
+          message: 'Could not create new budget:\n' + JSON.stringify(e.response.data),
           duration: 0
         })
       });

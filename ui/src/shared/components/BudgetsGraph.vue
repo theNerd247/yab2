@@ -34,7 +34,7 @@ export default {
     httpGetStatus(){
 			let sdate = moment().subtract(30, 'days').format("YYYY-MM-DD");
 			let edate = moment().format("YYYY-MM-DD");
-			let query = "/budget/name/"+this.budgetName+"/status/between";
+			let query = "/budget-list/name/"+this.budgetName+"/status/between";
 
 			HTTP.get(query, {
         params: { 

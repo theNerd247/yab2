@@ -64,7 +64,6 @@ create = mkInputHandler (jsonI . jsonO) handler
       case (Data.IxSet.null be) of
         False -> throwE NotAllowed
         _ -> do 
-          now <- liftIO $ getCurrentTime
           si <- liftIO $ setNewBID (newList^.startInfo)
           is <- liftIO $ forM (newList^.items) setNewBID
           let newList' = newList & startInfo .~ si & items .~ is

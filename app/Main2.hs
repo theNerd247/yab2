@@ -69,7 +69,6 @@ uploadTransaction = do
   where 
     upload name = do
       dups <- uploadCSVFiles $ \f -> do
-        liftIO . putStrLn $ "uploaded: " ++ f
         db <- asks db
         es <- loadNewTransactionFile (B.unpack name) f
         mergeExpenses db es
