@@ -8,6 +8,9 @@
 			<el-form-item>
 				<el-input v-model="newExpense.reason" placeholder="Reason"></el-input>
 			</el-form-item>
+			<el-form-item>
+				<el-input v-model="newExpense.date" placeholder="Date"></el-input>
+			</el-form-item>
       <el-form-item>
         <el-input v-model="newExpense.type" placeholder="Budget Item Name"></el-input>
       </el-form-item>
@@ -41,7 +44,7 @@ export default {
 				reason: '',
         type: '',
         id: '',
-        date: moment()
+        date: moment().format("YYYY-MM-DD")
 			}
 		}
 	},

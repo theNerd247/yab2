@@ -93,6 +93,8 @@ class HasYabList m a | m -> a where
   yabListStartInfo = yabList . yabListStartInfo
 
 class BudgetAtPeriod a where
+  -- | gets a difference amount relative to the start amount of the budget for a
+  -- period that is relative to the start date.
   budgetAmountAtPeriod :: (HasStartInfo s) => s -> Rate -> Getter a Amount
 
 instance Default BudgetAmount
@@ -221,7 +223,14 @@ dayToDate d = UTCTime d 0
 -- runs a budget for "p" periods given a starting amount "start" and returns the
 -- final balance. 
 {-getBalanceAtPeriod :: (BudgetAtPeriod a, HasStartInfo (f a), Traversal' (f a) a) => Rate -> (f a) -> Amount-}
-getBalanceAtPeriod p b = (b^.startAmount) + (sum $ b^.items^..traverse.budgetAmountAtPeriod (b^.startInfo) p)
+getBalanceAtPeriod p b = (b^.startAmount) + (b^.balanceDiff p)
+
+-- get the start amount for a budget at the given period and for the given budget
+getStartAmount b si = (si^.startAmount) - (b^.(balanceDiff $ dayToRate (b^.startDate) (si^.startDate)))
+
+-- the sum of item amounts relative to the budget start amount and relative to
+-- the start date
+balanceDiff p = to $ \b -> sum $ b^..items.traverse.budgetAmountAtPeriod (b^.startInfo) p
 
 -- gets the budget balance from start to end periods (both inclusive)
 {-getBalancesBetween :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a) => Rate -> Rate -> (f a) -> [Amount]-}

@@ -39,7 +39,7 @@ packages:
 - '.'
 - location:
     git: git@github.com:theNerd247/rest
-    commit: 186d78255a2e56cfc9ac5ba653bfd8ad032f5d1e
+    commit: 45927b2d5253ec9e4144d273a5f6e79c63fc09bb
   subdirs: 
     - rest-core
     - rest-snap

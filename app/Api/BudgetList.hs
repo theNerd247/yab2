@@ -3,29 +3,31 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Api.BudgetList (resource, WithBudget) where
-
-import Control.Lens hiding ((??),(!?))
-import Data.Budget
-import YabAcid
-import Data.Data
-import GHC.Generics
-import Data.IxSet
-import Control.Monad (forM)
-import Control.Monad.Reader (MonadReader, ReaderT (..), asks)
-import Control.Monad.Trans (MonadIO, lift, liftIO)
-import Control.Monad.Trans.Except (ExceptT, throwE)
-import Data.JSON.Schema hiding (Proxy)
-import Control.Error.Util ((??),(!?))
-import Data.Aeson
-import qualified Data.Text as T
+module Api.BudgetList (resource, startAmountResource, WithBudget) where
 
 import Api.ApiTypes
+import Control.Error.Util ((??),(!?))
+import Control.Lens hiding ((??),(!?))
+import Control.Monad (forM)
+import Control.Monad.Reader (MonadReader, ReaderT (..), asks,ask)
+import Control.Monad.Trans (MonadIO, lift, liftIO)
+import Control.Monad.Trans.Except (ExceptT, throwE)
+import Data.Aeson
+import Data.Budget
+import Data.Data
+import Data.IxSet
+import Data.JSON.Schema hiding (Proxy)
+import GHC.Generics
 import Rest
-import Rest.Types.Void
+import Rest.Dictionary
+import Rest.Types.Info
+import YabAcid
+import qualified Data.Text as T
 import qualified Rest.Resource as R
 
 type WithBudget = ReaderT Name YabApi
+
+type WithBudgetList a = ReaderT a WithBudget
 
 resource :: Resource YabApi WithBudget Name () Void
 resource = mkResourceReader
@@ -37,6 +39,13 @@ resource = mkResourceReader
   , R.update = Just update
   }
 
+startAmountResource :: Resource WithBudget (WithBudgetList ()) () Void Void
+startAmountResource = mkResourceReader
+  { R.name = "start-amount"
+  , R.schema = noListing $ unnamedSingle (const ())
+  , R.get = Just startAmountGetter
+  }
+
 get :: Handler WithBudget
 get = mkIdHandler jsonO handler
   where
@@ -45,6 +54,22 @@ get = mkIdHandler jsonO handler
       db <- (lift . lift) (asks $ view db)
       bdb <- (asYabList db name $ getBudgetByName db name) !? NotAllowed
       return bdb 
+
+mkParamHandler dict h = mkHandler dict $ \env -> h (param env)
+
+data SAmount = SAmount UTCTime Amount
+
+startAmountParam = mkPar $ SAmount <$> withParam "startDate" <*> withParam "startAmount"
+
+startAmountGetter :: Handler (WithBudgetList ())
+startAmountGetter = mkParamHandler (startAmountParam . jsonO) handler
+  where
+    handler :: SAmount -> ExceptT Reason_ (WithBudgetList ()) Amount
+    handler (SAmount t a) = do
+      name <- (lift . lift) ask
+      db <- (lift . lift . lift) (asks $ view db)
+      bdb <- (asYabList db name $ getBudgetByName db name) !? NotAllowed
+      return $ getStartAmount bdb $ (def :: StartInfo) & startDate .~ t & startAmount .~ a
 
 list :: ListHandler YabApi
 list = mkListing jsonO $ \range -> do

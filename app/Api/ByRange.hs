@@ -11,7 +11,7 @@ import Data.Aeson
 import Data.JSON.Schema hiding (Proxy)
 import Data.JSON.Schema.Combinators (value)
 import Rest
-import Rest.Dictionary.Types
+import Rest.Dictionary (withParam)
 
 data DayRange = DayRange
   { sdate :: Day
@@ -27,9 +27,4 @@ instance JSONSchema Day where
 instance JSONSchema DayRange where
   schema = gSchema
 
-dayRangeParam = mkPar $ Param ["sdate","edate"] parse
-  where
-    parse [Nothing, Nothing] = Right Nothing
-    parse [Just _, Nothing] = Left $ MissingField "edate"
-    parse [Nothing, Just _] = Left $ MissingField "sdate"
-    parse [Just s, Just e] = Right . Just $ DayRange (read s) (read e)
+dayRangeParam = mkPar . fmap Just $ DayRange <$> withParam "sdate" <*> withParam "edate"

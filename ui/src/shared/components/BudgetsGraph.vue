@@ -1,7 +1,22 @@
 <template>
 <home-card title="Budget Status">
-	<div slot="content">
-		<balances-graph ref="bgraph" :chart-data="balancesData"></balances-graph>
+  <div slot="content">
+    <el-row>
+    <el-form :inline="true">
+      <el-form-item label="Start Date">
+        <el-input placeholder="Start Date" v-model="sdate"></el-input>
+      </el-form-item>
+      <el-form-item label="End Date">
+        <el-input placeholder="End Date" v-model="edate"></el-input>
+      </el-form-item>
+      <el-form-item>
+        <el-button @click=httpGetStatus()>Update</el-button>
+      </el-form-item>
+      </el-form>
+  </el-row>
+  <el-row>
+    <balances-graph ref="bgraph" :chart-data="balancesData"></balances-graph>
+  </el-row>
 	</div>
 </home-card>
 
@@ -23,6 +38,8 @@ export default {
 	props: ['budgetName'],
 	data  () {
 		return {
+			sdate: moment().subtract(30, 'days').format("YYYY-MM-DD"),
+			edate: moment().format("YYYY-MM-DD"),
 			balancesData: null,
       budgetStatus: [],
 		}
@@ -32,14 +49,12 @@ export default {
 	},
   methods: {
     httpGetStatus(){
-			let sdate = moment().subtract(30, 'days').format("YYYY-MM-DD");
-			let edate = moment().format("YYYY-MM-DD");
 			let query = "/budget-list/name/"+this.budgetName+"/status/between";
 
 			HTTP.get(query, {
         params: { 
-          sdate,
-          edate
+          sdate: this.sdate,
+          edate: this.edate
         }
       })
       .then(response => {

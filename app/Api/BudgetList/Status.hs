@@ -41,10 +41,12 @@ resource = mkResourceReader
   , R.list = const list
   }
 
+mkParamHandler dict h = mkHandler dict $ \env -> ask >>= h (param env)
+
 get :: Handler WithStatus
-get = mkHandler (dayRangeParam . jsonO) $ \env -> ask >>= handler env
+get = mkParamHandler (dayRangeParam . jsonO) $ handler
   where
-    handler :: Env () (Maybe DayRange) () -> Identifier -> ExceptT Reason_ WithStatus [BudgetStatusItem]
+    handler :: Maybe DayRange -> Identifier -> ExceptT Reason_ WithStatus [BudgetStatusItem]
     handler _ (ByDate date) = do 
       name <- (lift . lift) ask
       db <- (lift . lift . lift) (asks $ view db)
@@ -52,14 +54,14 @@ get = mkHandler (dayRangeParam . jsonO) $ \env -> ask >>= handler env
       expenses <- (asYabList db name $ getExpensesByName db name) !? NotAllowed
       let cs = compareBudgetsOn (dayToRate (budget^.startDate) $ UTCTime date 0) budget expenses 
       return $ [cs & _1 %~ (rateToDay $ budget^.startDate)]
-    handler (Env _ (Just rnge) _) ByRange = do 
+    handler (Just rnge) ByRange = do 
       name <- (lift . lift) ask
       db <- (lift . lift . lift) (asks $ view db)
       budget <- (asYabList db name $ getBudgetByName db name) !? NotAllowed
       expenses <- (asYabList db name $ getExpensesByName db name) !? NotAllowed
       let cs = compareBudgetsBetween (dayToRate (budget^.startDate) (UTCTime (sdate rnge) 0)) (dayToRate (budget^.startDate) (UTCTime (edate rnge) 0)) budget expenses
       return $ (DL.sortOn (view _1) cs) & traverse . _1 %~ (rateToDay $ budget^.startDate)
-    handler (Env _ Nothing _) _ = throwE . ParamError $ MissingField "missing fields sdate and edate"
+    handler Nothing ByRange = throwE . ParamError $ MissingField "missing fields sdate and edate"
 
 list :: ListHandler WithBudget
 list = mkListing jsonO $ \range -> do 

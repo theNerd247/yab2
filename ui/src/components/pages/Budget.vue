@@ -102,8 +102,25 @@ export default {
           duration: 0
         })
       });
-
+    },
+    getStartAmount() {
+      HTTP.get(this.query, )
+      .then(response => {
+        this.$notify({
+          title: 'Updated Budget',
+          type: 'success',
+          duration: 0
+        })
+      })
+      .catch(e => {
+        this.$notify.error({
+          title: 'Error',
+          message: 'Could not update budget:\n' + JSON.stringify(e.response.data),
+          duration: 0
+        })
+      });
     }
+
 	}
 }
 </script>

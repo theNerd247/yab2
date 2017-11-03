@@ -13,12 +13,9 @@ api = Versioned [(mkVersion 1 0 0, Some1 yab100)]
 
 yab100 :: Router YabApi YabApi
 yab100 = root 
-  -/ budgetList --/ status
-  -/ expenseList --/ expenseItem
-  -/ expenses
-
-budgetList = route BudgetList.resource
-expenseList = route ExpenseList.resource
-status = route Status.resource
-expenses = route Expenses.resource
-expenseItem = route ExpenseItem.resource
+  -/ route BudgetList.resource 
+    --/ route Status.resource
+    --/ route BudgetList.startAmountResource
+  -/ route ExpenseList.resource 
+    --/ route ExpenseItem.resource
+  -/ route Expenses.resource
