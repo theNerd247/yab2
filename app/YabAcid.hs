@@ -106,6 +106,9 @@ getEsByName a = asks . view $ expenseDB.to (@= a)
 getEsByBID :: BID -> Query YabAcid ExpenseDB
 getEsByBID a = asks . view $ expenseDB.to (@= a)
 
+getEsDB :: Query YabAcid ExpenseDB
+getEsDB = asks $ view expenseDB
+
 getBByName :: Name -> Query YabAcid BudgetDB
 getBByName n = asks . view $ budgetDB.to (@= n)
 
@@ -133,28 +136,29 @@ deleteSIByBID :: BID -> Update YabAcid ()
 deleteSIByBID bid = startInfoDB %= deleteIx bid
 
 $(makeAcidic ''YabAcid [
-  'insertE
-  ,'insertB
-  ,'insertSI
-  ,'insertEAudit
-  ,'insertBAudit
-  ,'insertSAudit
-  ,'upsertEs
-  ,'getBByName
-  ,'getEsByDate
-  ,'getEsByAmount
-  ,'getEsByReason
-  ,'getEsByName
-  ,'getEsByNameAndDates
-  ,'getEsByBID
-  ,'getSIByName
-  ,'updateSI
-  ,'updateE
-  ,'updateB
-  ,'getAllBNames
-  ,'deleteBByBID
+  'deleteBByBID
   ,'deleteEByBID
   ,'deleteSIByBID
+  ,'getAllBNames
+  ,'getBByName
+  ,'getEsByAmount
+  ,'getEsByBID
+  ,'getEsByDate
+  ,'getEsByName
+  ,'getEsByNameAndDates
+  ,'getEsByReason
+  ,'getEsDB
+  ,'getSIByName
+  ,'insertB
+  ,'insertBAudit
+  ,'insertE
+  ,'insertEAudit
+  ,'insertSAudit
+  ,'insertSI
+  ,'updateB
+  ,'updateE
+  ,'updateSI
+  ,'upsertEs
   ])
 
 insertExpenseItem db e = do
@@ -222,6 +226,8 @@ getExpensesByAmount db = query' db . GetEsByAmount
 getExpensesByReason db = query' db . GetEsByReason
 
 getExpensesByName db = query' db . GetEsByName
+
+getExpensesDB db = query' db GetEsDB
 
 getExpensesByNameAndDates db n d = query' db . GetEsByNameAndDates n d
 

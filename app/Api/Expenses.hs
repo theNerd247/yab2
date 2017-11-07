@@ -46,10 +46,9 @@ list ByRange = getRange
 
 getLatest :: ListHandler YabApi
 getLatest = mkCustomListing jsonO $ \env -> do
-  now <- liftIO $ getCurrentTime
-  let sdate = addDays (-30) $ utctDay now
-  let edate = utctDay now
-  getExpensesByRange sdate edate
+  db <- lift (asks $ view db)
+  edb <- getExpensesDB db
+  return . take 30 . DL.sortOn (view expenseDate) $ toList edb
 
 getRange :: ListHandler YabApi
 getRange = mkCustomListing (dayRangeParam . jsonO) $ \env -> 

@@ -2,7 +2,7 @@
 <home-card title="Upload Transactions">
 	<el-form slot="content" inline>
 	<el-form-item>
-		<BudgetNames :name.sync="name"></BudgetNames>
+		<BudgetNames :budgetName.sync="name"></BudgetNames>
 	</el-form-item>
 	<el-form-item>
     <el-upload 
