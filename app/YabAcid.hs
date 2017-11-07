@@ -91,6 +91,9 @@ getSIByName n = asks . view $ startInfoDB.to (@= n)
 getEsByDate :: UTCTime -> UTCTime -> Query YabAcid ExpenseDB
 getEsByDate start end = asks . view $ expenseDB.to (@>=<= (start,end))
 
+getEsByNameAndDates :: Name -> UTCTime -> UTCTime -> Query YabAcid ExpenseDB
+getEsByNameAndDates n s e = asks . view $ expenseDB.to ((@= n) . (@>=<= (s,e)))
+
 getEsByAmount :: Amount -> Query YabAcid ExpenseDB
 getEsByAmount a = asks . view $ expenseDB.to (@= a)
 
@@ -105,6 +108,9 @@ getEsByBID a = asks . view $ expenseDB.to (@= a)
 
 getBByName :: Name -> Query YabAcid BudgetDB
 getBByName n = asks . view $ budgetDB.to (@= n)
+
+getBByNameAndDates :: Name -> UTCTime -> UTCTime -> Query YabAcid BudgetDB
+getBByNameAndDates n s e = asks . view $ budgetDB.to ((@= n) . (@>=<= (s,e)))
 
 updateB :: BudgetItem -> Update YabAcid ()
 updateB b = budgetDB %= updateIx (b^.bid) b
@@ -138,10 +144,12 @@ $(makeAcidic ''YabAcid [
   ,'insertSAudit
   ,'upsertEs
   ,'getBByName
+  ,'getBByNameAndDates
   ,'getEsByDate
   ,'getEsByAmount
   ,'getEsByReason
   ,'getEsByName
+  ,'getEsByNameAndDates
   ,'getEsByBID
   ,'getSIByName
   ,'updateSI
@@ -211,6 +219,8 @@ mergeExpenses db = update' db . UpsertEs
 
 getBudgetByName db  = query' db . GetBByName
 
+getBudgetByNameAndDates db n d = query' db . GetBByNameAndDates n d
+
 getExpensesByDate db s = query' db . GetEsByDate s
 
 getExpensesByAmount db = query' db . GetEsByAmount
@@ -218,6 +228,8 @@ getExpensesByAmount db = query' db . GetEsByAmount
 getExpensesByReason db = query' db . GetEsByReason
 
 getExpensesByName db = query' db . GetEsByName
+
+getExpensesByNameAndDates db n d = query' db . GetEsByNameAndDates n d
 
 getExpensesByBID db = query' db . GetEsByBID
 

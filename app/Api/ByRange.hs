@@ -27,4 +27,4 @@ instance JSONSchema Day where
 instance JSONSchema DayRange where
   schema = gSchema
 
-dayRangeParam = mkPar . fmap Just $ DayRange <$> withParam "sdate" <*> withParam "edate"
+dayRangeParam = mkPar $ DayRange <$> withParam "sdate" <*> withParam "edate"

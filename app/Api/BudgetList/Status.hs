@@ -20,23 +20,26 @@ import Data.JSON.Schema hiding (Proxy)
 import GHC.Generics hiding (to)
 import Rest
 import Rest.Dictionary.Types
+import Rest.Handler
 import Rest.Types.Info
 import YabAcid
 import qualified Data.List as DL
 import qualified Data.Text as T
 import qualified Rest.Resource as R
 
-data Identifier = ByDate Day | ByRange
+type SID = Day
 
-type WithStatus = ReaderT Identifier WithBudget
+data MID = All | ByRange 
+
+type WithStatus = ReaderT SID WithBudget
 
 instance Info Day where
   describe _ = "day"
 
-resource :: Resource WithBudget WithStatus Identifier () Void
+resource :: Resource WithBudget WithStatus SID MID Void
 resource = mkResourceReader
   { R.name = "status"
-  , R.schema = withListing () $ named [ ("on", singleRead ByDate), ("between", single ByRange) ] 
+  , R.schema = withListing All $ named [ ("on", singleBy read ), ("between", listing ByRange) ] 
   , R.get = Just get
   , R.list = const list
   }
@@ -44,24 +47,28 @@ resource = mkResourceReader
 mkParamHandler dict h = mkHandler dict $ \env -> ask >>= h (param env)
 
 get :: Handler WithStatus
-get = mkParamHandler (dayRangeParam . jsonO) $ handler
+get = mkIdHandler jsonO $ handler
   where
-    handler :: Maybe DayRange -> Identifier -> ExceptT Reason_ WithStatus [BudgetStatusItem]
-    handler _ (ByDate date) = do 
+    handler :: () -> SID -> ExceptT Reason_ WithStatus [BudgetStatusItem]
+    handler _ date = do 
       name <- (lift . lift) ask
       db <- (lift . lift . lift) (asks $ view db)
       budget <- (asYabList db name $ getBudgetByName db name) !? NotAllowed
       expenses <- (asYabList db name $ getExpensesByName db name) !? NotAllowed
       let cs = compareBudgetsOn (dayToRate (budget^.startDate) $ UTCTime date 0) budget expenses 
       return $ [cs & _1 %~ (rateToDay $ budget^.startDate)]
-    handler (Just rnge) ByRange = do 
-      name <- (lift . lift) ask
-      db <- (lift . lift . lift) (asks $ view db)
-      budget <- (asYabList db name $ getBudgetByName db name) !? NotAllowed
-      expenses <- (asYabList db name $ getExpensesByName db name) !? NotAllowed
-      let cs = compareBudgetsBetween (dayToRate (budget^.startDate) (UTCTime (sdate rnge) 0)) (dayToRate (budget^.startDate) (UTCTime (edate rnge) 0)) budget expenses
-      return $ (DL.sortOn (view _1) cs) & traverse . _1 %~ (rateToDay $ budget^.startDate)
-    handler Nothing ByRange = throwE . ParamError $ MissingField "missing fields sdate and edate"
+
+listByDayRange :: ListHandler WithBudget
+listByDayRange = mkCustomListing (dayRangeParam . jsonO) $ \env -> do
+  db <- (lift . lift) (ask $ view db)
+  name <- (lift) ask
+  let stime = dayToDate . sdate $ param env
+  let etime = dayToDate . edate $ param env
+  budget <- (asYabList db name $ getBudgetByNameAndDates db name stime etime) !? NotAllowed
+  expenses <- (asYabList db name $ getExpensesByNameAndDates db name stime etime) !? NotAllowed
+  let cs = compareBudgetsBetween (dayToRate (budget^.startDate) stime) (dayToRate (budget^.startDate) etime) budget expenses
+  return $ (DL.sortOn (view _1) cs) & traverse . _1 %~ (rateToDay $ budget^.startDate)
+
 
 list :: ListHandler WithBudget
 list = mkListing jsonO $ \range -> do 

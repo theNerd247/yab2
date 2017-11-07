@@ -17,39 +17,46 @@ import Data.Aeson
 import Data.Budget
 import Data.Budget
 import Data.Data
-import Data.IxSet
+import Data.IxSet hiding (getRange)
 import Data.JSON.Schema hiding (Proxy)
 import GHC.Generics
 import Rest
 import Rest.Types.Void
+import Rest.Handler
 import YabAcid
 import qualified Data.List as DL
 import qualified Rest.Resource as R
 
-data Identifier = Latest | ByRange
+type Identifier = ()
+
+data MID = Latest | ByRange
 
 type WithExpense = ReaderT Identifier YabApi
 
-resource :: Resource YabApi WithExpense Identifier Void Void
+resource :: Resource YabApi WithExpense Identifier MID Void
 resource = mkResourceReader
   { R.name = "expenses"
-  , R.schema = noListing $ named [("latest", single Latest), ("between", single ByRange)] 
-  , R.get = Just get
+  , R.schema = withListing Latest $ named [("between", listing ByRange)] 
+  , R.list = list
   }
 
-get :: Handler WithExpense
-get = mkHandler (dayRangeParam . jsonO) $ \env -> ask >>= handler env
-  where
-    handler :: Env () (Maybe DayRange) () -> Identifier -> ExceptT Reason_ WithExpense [ExpenseItem]
-    handler (Env _ (Just rnge) _) ByRange = getExpenses (sdate rnge) (edate rnge)
-    handler _ ByRange = throwE . ParamError $ MissingField "missing fields sdate and edate"
-    handler _ Latest = do 
-      now <- liftIO $ getCurrentTime
-      let sdate = addDays (-30) $ utctDay now
-      let edate = utctDay now
-      getExpenses sdate edate
-    getExpenses :: Day -> Day -> ExceptT Reason_ WithExpense [ExpenseItem]
-    getExpenses s e = do
-      db <- (lift . lift) (asks $ view db)
-      es <- getExpensesByDate db (dayToDate s) (dayToDate e)
-      return $ DL.sortOn (view expenseDate) $ toList es
+list :: MID -> ListHandler YabApi
+list Latest = getLatest
+list ByRange = getRange
+
+getLatest :: ListHandler YabApi
+getLatest = mkCustomListing jsonO $ \env -> do
+  now <- liftIO $ getCurrentTime
+  let sdate = addDays (-30) $ utctDay now
+  let edate = utctDay now
+  getExpensesByRange sdate edate
+
+getRange :: ListHandler YabApi
+getRange = mkCustomListing (dayRangeParam . jsonO) $ \env -> 
+  getExpensesByRange (sdate $ param env) (edate $ param env)
+
+getExpensesByRange :: Day -> Day -> ExceptT Reason_ YabApi [ExpenseItem]
+getExpensesByRange s e = do
+  db <- lift (asks $ view db)
+  es <- getExpensesByDate db (dayToDate s) (dayToDate e)
+  return $ DL.sortOn (view expenseDate) $ toList es
