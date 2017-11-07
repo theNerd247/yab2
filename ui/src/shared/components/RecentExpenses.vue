@@ -38,11 +38,11 @@ export default {
 			return _.truncate(reason,{length: 15, separator: ' '});
 		},
 		httpGetExpenses(){
-			let query = "expenses/latest/"
+			let query = "expenses"
 
 			HTTP.get(query)
 				.then(response => {
-					this.expenses = response.data;
+					this.expenses = response.data.items;
           this.expenses = _.reverse(this.expenses);
 				})
 				.catch(e => {
