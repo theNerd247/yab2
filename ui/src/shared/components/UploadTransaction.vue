@@ -2,7 +2,7 @@
 <home-card title="Upload Transactions">
 	<el-form slot="content" inline>
 	<el-form-item>
-		<el-input v-model="name" placeholder="Budget Name"></el-input>
+		<BudgetNames :name.sync="name"></BudgetNames>
 	</el-form-item>
 	<el-form-item>
     <el-upload 
@@ -24,12 +24,14 @@
 <script>
 import Vue from 'vue'
 import HomeCard from './HomeCard.vue'
+import BudgetNames from './BudgetNames.vue'
 import budgetsJSON from '@/assets/budgets.json'
 import { baseURL } from '@/shared/http-common'
 
 export default {
   components: {
     HomeCard,
+		BudgetNames
 	},
 	data  () {
 		return {

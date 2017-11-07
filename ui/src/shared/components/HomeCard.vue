@@ -1,4 +1,8 @@
 <style>
+	.action {
+		float: right;
+		padding: 3px 0;
+	}
   .card-content {
     padding: 8px 8px;
   }
@@ -17,8 +21,10 @@
   <el-card :body-style="{ padding: '0px' }">
     <div slot="header" class="clearfix">
       <span>{{ title }}</span>
-      <slot name="action">
-      </slot>
+			<div class="action">
+				<slot name="action">
+				</slot>
+			</div>
     </div>
     <div class='card-content'>
       <slot name="content"></slot>

@@ -65,7 +65,7 @@ listByDayRange = mkCustomListing (dayRangeParam . jsonO) $ \env -> do
   name <- (lift) ask
   let stime = dayToDate . sdate $ param env
   let etime = dayToDate . edate $ param env
-  budget <- (asYabList db name $ getBudgetByNameAndDates db name stime etime) !? NotAllowed
+  budget <- (asYabList db name $ getBudgetByName db name) !? NotAllowed
   expenses <- (asYabList db name $ getExpensesByNameAndDates db name stime etime) !? NotAllowed
   let cs = compareBudgetsBetween (dayToRate (budget^.startDate) stime) (dayToRate (budget^.startDate) etime) budget expenses
   return $ (DL.sortOn (view _1) cs) & traverse . _1 %~ (rateToDay $ budget^.startDate)

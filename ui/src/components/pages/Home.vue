@@ -11,18 +11,15 @@
   <el-col :span="24">
     <el-row type="flex" justify="space-around" :gutter="20">
       <el-col :span="8">
-        <budget-graph budgetName="tst"></budget-graph>
+          <add-expense></add-expense>
       </el-col>
 
       <el-col :span="8">
         <el-row>
-          <add-expense></add-expense>
+          <new-budget></new-budget>
         </el-row>
         <el-row>
           <upload-transaction></upload-transaction>
-        </el-row>
-        <el-row>
-          <new-budget></new-budget>
         </el-row>
       </el-col>
 
@@ -32,9 +29,6 @@
         </el-row>
         <el-row>
           <recent-expenses></recent-expenses>
-        </el-row>
-        <el-row>
-
         </el-row>
       </el-col>
     </el-row>
@@ -62,16 +56,11 @@ export default {
   },
   data () {
     return {
-      budgets: []
+      budgetNames: []
     }
   },
   name: 'Vue',
-  created () {
-    HTTP.get("budget-list")
-      .then(response => {
-        this.budgets = response.data.items;
-      });
-  }
+
 }
 </script>
 

@@ -1,6 +1,9 @@
 <template>
 <home-card title="Budget Status">
-  <div slot="content">
+		<div slot="action">
+			<el-button @click=httpGetStatus()>Update</el-button>
+		</div>>
+	  <div slot="content">
     <el-row>
     <el-form :inline="true">
       <el-form-item label="Start Date">
@@ -10,7 +13,6 @@
         <el-input placeholder="End Date" v-model="edate"></el-input>
       </el-form-item>
       <el-form-item>
-        <el-button @click=httpGetStatus()>Update</el-button>
       </el-form-item>
       </el-form>
   </el-row>
@@ -33,7 +35,7 @@ import moment from 'moment'
 export default {
   components: {
     HomeCard,
-    BalancesGraph
+    BalancesGraph,
 	},
 	props: ['budgetName'],
 	data  () {
@@ -58,7 +60,7 @@ export default {
         }
       })
       .then(response => {
-        this.budgetStatus = response.data;
+        this.budgetStatus = response.data.items;
         this.makeBudgetData();
       })
       .catch(e => {

@@ -82,7 +82,7 @@ export default {
 
     },
     removeItem(index) {
-      this.newBudget.items = this.newBudget.items.splice(index,1);
+      this.newBudget.items.splice(index,1);
     },
     addItem(){
       this.newBudget.items.push( {id: 0, type: '', amount: null, rate: null, name: '' });

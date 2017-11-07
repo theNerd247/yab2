@@ -3,8 +3,8 @@
 		<el-button slot="action" @click="createNewExpense" type="info" style="float: right;"><i class="el-icon-plus"></i> Add</el-button>
 		<el-form slot="content">
 			<el-form-item>
-				<el-input v-model="newExpense.name" placeholder="Budget Name - replace with drop down"></el-input>
-			</el-form-item>
+        <BudgetNames :budgetName.sync="newExpense.name"></BudgetNames>
+      </el-form-item>
 			<el-form-item>
 				<el-input v-model="newExpense.reason" placeholder="Reason"></el-input>
 			</el-form-item>
@@ -26,6 +26,7 @@
 <script>
 import Vue from 'vue'
 import HomeCard from './HomeCard.vue'
+import BudgetNames from './BudgetNames.vue'
 import budgetsJSON from '@/assets/budgets.json'
 import moment from 'moment'
 import { HTTP } from '@/shared/http-common.js'
@@ -34,6 +35,7 @@ import { HTTP } from '@/shared/http-common.js'
 export default {
 	components: {
 		HomeCard,
+    BudgetNames,
 	},
 	data  () {
 		return {

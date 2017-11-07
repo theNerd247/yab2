@@ -11,7 +11,7 @@
 <script>
 import Vue from 'vue'
 import HomeCard from './HomeCard.vue'
-import statusJSON from '@/assets/budget-status.json'
+import { HTTP } from '@/shared/http-common.js'
 import _ from 'lodash'
 
 export default {
@@ -20,12 +20,21 @@ export default {
 	},
 	data  () {
 		return {
+			statuses: []
 		}
 	},
-	computed: {
-		statuses () {
-			return _.take(statusJSON, 10);
-		}
+	created () {
+		HTTP.get("budget-list/status")
+			.then(resp => {
+				console.log(resp);
+				this.statuses = _.map(resp.data.items, x => { 
+					return { 
+						name: x[0],
+						limit: x[1],
+						amount: x[2],
+					}
+				});
+			});
 	},
   methods: {
     budgetStatus(budget) {
