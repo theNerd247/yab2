@@ -15,6 +15,7 @@ import Control.Monad.Trans.Except (ExceptT, throwE)
 import Data.Aeson
 import Data.Budget
 import Data.Data
+import Data.Maybe (listToMaybe)
 import Data.IxSet
 import Data.JSON.Schema hiding (Proxy)
 import GHC.Generics hiding (to)
@@ -41,22 +42,26 @@ resource = mkResourceReader
   { R.name = "status"
   , R.schema = withListing All $ named [ ("on", singleBy read ), ("between", listing ByRange) ] 
   , R.get = Just get
-  , R.list = const list
+  , R.list = list
   }
 
 mkParamHandler dict h = mkHandler dict $ \env -> ask >>= h (param env)
 
+list :: MID -> ListHandler WithBudget
+list All = listAll
+list ByRange = listByDayRange
+
 get :: Handler WithStatus
 get = mkIdHandler jsonO $ handler
   where
-    handler :: () -> SID -> ExceptT Reason_ WithStatus [BudgetStatusItem]
+    handler :: () -> SID -> ExceptT Reason_ WithStatus (Maybe BudgetStatusItem)
     handler _ date = do 
       name <- (lift . lift) ask
       db <- (lift . lift . lift) (asks $ view db)
       budget <- (asYabList db name $ getBudgetByName db name) !? NotAllowed
       expenses <- (asYabList db name $ getExpensesByName db name) !? NotAllowed
       let cs = compareBudgetsOn (dayToRate (budget^.startDate) $ UTCTime date 0) budget expenses 
-      return $ [cs & _1 %~ (rateToDay $ budget^.startDate)]
+      return $ listToMaybe $ [cs & _1 %~ (rateToDay $ budget^.startDate)]
 
 listByDayRange :: ListHandler WithBudget
 listByDayRange = mkCustomListing (dayRangeParam . jsonO) $ \env -> do
@@ -69,9 +74,8 @@ listByDayRange = mkCustomListing (dayRangeParam . jsonO) $ \env -> do
   let cs = compareBudgetsBetween (dayToRate (budget^.startDate) stime) (dayToRate (budget^.startDate) etime) budget expenses
   return $ (DL.sortOn (view _1) cs) & traverse . _1 %~ (rateToDay $ budget^.startDate)
 
-
-list :: ListHandler WithBudget
-list = mkListing jsonO $ \range -> do 
+listAll :: ListHandler WithBudget
+listAll = mkListing jsonO $ \range -> do 
   name <- ask
   db <- (lift . lift) (ask $ view db)
   budget <- (asYabList db name $ getBudgetByName db name) !? NotAllowed
