@@ -29,11 +29,13 @@ type WithBudget = ReaderT Name YabApi
 
 type WithBudgetList a = ReaderT a WithBudget
 
-resource :: Resource YabApi WithBudget Name () Void
+data MID = All | AllNames | AllStatus
+
+resource :: Resource YabApi WithBudget Name MID Void
 resource = mkResourceReader
   { R.name = "budget-list"
-  , R.schema = withListing () $ named [ ("name", singleBy id) ] 
-  , R.list = const list
+  , R.schema = withListing All $ named [ ("name", singleBy id), ("names", listing AllNames), ("status", listing AllStatus)] 
+  , R.list = list
   , R.get = Just get
   , R.create = Just create
   , R.update = Just update
@@ -48,13 +50,33 @@ get = mkIdHandler jsonO handler
       bdb <- (asYabList db name $ getBudgetByName db name) !? NotAllowed
       return bdb 
 
-list :: ListHandler YabApi
-list = mkListing jsonO $ \range -> do
+list :: MID -> ListHandler YabApi
+list All = listAll
+list AllNames = listNames
+list AllStatus = listAllStatuses
+
+listAll :: ListHandler YabApi
+listAll = mkListing jsonO $ \range -> do
   db <- (asks $ view db)
   names <- getAllBudgetNames db
   forM names $ \name -> do
     b <- asYabList db name $ getBudgetByName db name
     return $ b & lifted.items %~ (take (count range) . drop (offset range))
+
+listAllStatuses :: ListHandler YabApi
+listAllStatuses = mkListing jsonO $ \_ -> do
+  db <- lift (ask $ view db)
+  now <- liftIO $ getCurrentTime
+  names <- getAllBudgetNames db
+  forM names $ \nm -> do
+    b <- (asYabList db nm $ getBudgetByName db nm) !? NotAllowed
+    e <- (asYabList db nm $ getExpensesByName db nm) !? NotAllowed
+    return $ compareBudgetsOn (dayToRate (b^.startDate) now) b e
+
+listNames :: ListHandler YabApi
+listNames = mkListing jsonO $ \_ -> do
+  db <- (asks $ view db)
+  fmap T.pack <$> getAllBudgetNames db
 
 create :: Handler YabApi
 create = mkInputHandler (jsonI . jsonO) handler

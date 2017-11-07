@@ -60,7 +60,7 @@ get = mkIdHandler jsonO $ handler
       db <- (lift . lift . lift) (asks $ view db)
       budget <- (asYabList db name $ getBudgetByName db name) !? NotAllowed
       expenses <- (asYabList db name $ getExpensesByName db name) !? NotAllowed
-      let cs = compareBudgetsOn (dayToRate (budget^.startDate) $ UTCTime date 0) budget expenses 
+      let cs = compareBudgetsOn (dayToRate (budget^.startDate) $ dayToDate date) budget expenses 
       return $ listToMaybe $ [cs & _1 %~ (rateToDay $ budget^.startDate)]
 
 listByDayRange :: ListHandler WithBudget
