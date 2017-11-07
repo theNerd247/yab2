@@ -240,9 +240,9 @@ earliestStartInfo xs = Just . head $ DL.sortOn (view startDate) xs
 -- returns the difference of the budget balance (b2 - b1) at each period between
 -- the start and end times
 compareBudgetsBetween :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a, BudgetAtPeriod b, HasStartInfo (g b), HasYabList (g b) b) => Rate -> Rate -> (f a) -> (g b) -> [(Rate,Amount,Amount)]
-compareBudgetsBetween start end b1 b2 = [start..end]^..traverse . to (\t -> compareBudgetsOn t b1 b2)
+compareBudgetsBetween start end b1 b2 = [start..end]^..traverse . to (\t -> let x = compareBudgetsOn t b1 b2 in (t,x^._1,x^._2))
 
-compareBudgetsOn p b1 b2 = (p,(getBalanceAtPeriod p b1), (getBalanceAtPeriod p b2))
+compareBudgetsOn p b1 b2 = ((getBalanceAtPeriod p b1), (getBalanceAtPeriod p b2))
 
 -- get's the first period where the budget balance is <= 0
 getEmptyDate :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a) => f a -> Rate

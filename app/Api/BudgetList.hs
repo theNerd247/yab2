@@ -71,7 +71,8 @@ listAllStatuses = mkListing jsonO $ \_ -> do
   forM names $ \nm -> do
     b <- (asYabList db nm $ getBudgetByName db nm) !? NotAllowed
     e <- (asYabList db nm $ getExpensesByName db nm) !? NotAllowed
-    return $ compareBudgetsOn (dayToRate (b^.startDate) now) b e
+    let c = compareBudgetsOn (dayToRate (b^.startDate) now) b e
+    return $ (T.pack nm,c^._1,c^._2)
 
 listNames :: ListHandler YabApi
 listNames = mkListing jsonO $ \_ -> do
