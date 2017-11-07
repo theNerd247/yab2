@@ -48,7 +48,7 @@ getLatest :: ListHandler YabApi
 getLatest = mkCustomListing jsonO $ \env -> do
   db <- lift (asks $ view db)
   edb <- getExpensesDB db
-  return . take 30 . DL.sortOn (view expenseDate) $ toList edb
+  return . take 30 . toDescList (Data.IxSet.Proxy :: Data.IxSet.Proxy UTCTime) $ edb
 
 getRange :: ListHandler YabApi
 getRange = mkCustomListing (dayRangeParam . jsonO) $ \env -> 

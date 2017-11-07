@@ -43,7 +43,6 @@ export default {
 			HTTP.get(query)
 				.then(response => {
 					this.expenses = response.data.items;
-          this.expenses = _.reverse(this.expenses);
 				})
 				.catch(e => {
 					this.$notify.error({

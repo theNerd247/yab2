@@ -53,6 +53,7 @@ export default {
 	methods: {
 		createNewExpense () { 
       let query = "expense-list/name/"+this.newExpense.name+"/expense"; 
+			this.newExpense.date = moment(this.newExpense.date).format();
       HTTP.post(query,this.newExpense)
       .then(response => {
         this.$notify({
