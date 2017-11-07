@@ -15,6 +15,7 @@ import Control.Monad.Trans.Except (ExceptT, throwE)
 import Data.Aeson
 import Data.Budget
 import Data.Data
+import Data.Maybe (fromMaybe)
 import Data.IxSet
 import Data.JSON.Schema hiding (Proxy)
 import GHC.Generics
@@ -70,8 +71,8 @@ listAllStatuses = mkListing jsonO $ \_ -> do
   names <- getAllBudgetNames db
   forM names $ \nm -> do
     b <- (asYabList db nm $ getBudgetByName db nm) !? NotAllowed
-    e <- (asYabList db nm $ getExpensesByName db nm) !? NotAllowed
-    let c = compareBudgetsOn (dayToRate (b^.startDate) now) b e
+    e <- asYabList db nm $ getExpensesByName db nm
+    let c = compareBudgetsOn (dayToRate (b^.startDate) now) b $ fromMaybe (def & startInfo .~ b^.startInfo) e
     return $ (T.pack nm,c^._1,c^._2)
 
 listNames :: ListHandler YabApi
