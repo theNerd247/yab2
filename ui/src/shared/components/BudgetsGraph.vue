@@ -72,7 +72,7 @@ export default {
       });
 		},
 		makeBudgetData () {
-			let ds = _.map(this.budgetStatus, x => moment(x[0]).format("YYYY-MM-DD"));
+			let ds = _.map(this.budgetStatus, x => moment.utc(x[0]).format("YYYY-MM-DD"));
 			let bs = _.map(this.budgetStatus, x => x[1]);
 			let es = _.map(this.budgetStatus, x => x[2]);
 
