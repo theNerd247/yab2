@@ -24,6 +24,7 @@ import Data.Default.Time
 import Data.IxSet
 import Data.Default
 import qualified Data.AuditMigration as AM
+import Data.JSON.Schema hiding (Proxy, Object)
 import Data.BID
 import Data.Foldable (find)
 import Control.Lens hiding ((.=), Indexable)
@@ -99,6 +100,12 @@ instance Indexable (Audit a) where
       action a = (:[]) $ a^.auditAction
 
 instance FromJSON AuditAction 
+
+instance JSONSchema AuditAction where
+  schema = gSchema
+
+instance (JSONSchema a) => JSONSchema (Audit a) where
+  schema = gSchema
 
 instance (FromJSON a) => FromJSON (Audit a)
 

@@ -135,11 +135,15 @@ deleteEByBID bid = expenseDB %= deleteIx bid
 deleteSIByBID :: BID -> Update YabAcid ()
 deleteSIByBID bid = startInfoDB %= deleteIx bid
 
+getBAuditDB :: Query YabAcid BudgetAuditDB
+getBAuditDB = asks . view $ budgetAuditDB
+
 $(makeAcidic ''YabAcid [
   'deleteBByBID
   ,'deleteEByBID
   ,'deleteSIByBID
   ,'getAllBNames
+  ,'getBAuditDB
   ,'getBByName
   ,'getEsByAmount
   ,'getEsByBID
@@ -239,6 +243,8 @@ getExpensesByBID db = query' db . GetEsByBID
 getStartInfoByName db = query' db . GetSIByName
 
 getAllBudgetNames db = query' db GetAllBNames
+
+getBudgetAuditDB db = query' db GetBAuditDB
 
 asYabList :: (MonadIO m, HasName a, Typeable a, Ord a, Indexable a, Default a) => YabAcidState -> Name -> (m (YabDB a)) -> m (Maybe (YabList a))
 asYabList db name ydbQuery = do

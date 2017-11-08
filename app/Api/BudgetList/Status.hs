@@ -30,7 +30,7 @@ import qualified Rest.Resource as R
 
 type SID = Day
 
-data MID = All | ByRange 
+data MID = All | ByRange
 
 type WithStatus = ReaderT SID WithBudget
 
