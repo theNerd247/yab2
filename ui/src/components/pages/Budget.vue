@@ -29,18 +29,29 @@
 							</el-date-picker>
 						</el-form-item>
 					</el-form>
+
 					<h2>Budget Items</h2>
-					<el-form :inline="true" v-for="(item, index) in budgetData.items" :key="index">
-						<el-form-item label="Name">
-							<el-input v-model="item.type" placeholder="Item Type"></el-input>
-						</el-form-item>
-						<el-form-item label="Amount">
-							<el-input v-model.number="item.amount" type="number" placeholder="Item Amount"></el-input>
-						</el-form-item>
-						<el-form-item label="Rate">
-							<el-input v-model.number="item.rate" type="number" placeholder="Item Rate"></el-input>
-						</el-form-item>
-					</el-form>
+          <el-button @click="addBudgetItem()">Add Item</el-button>
+
+          <el-table :data="budgetData.items">
+            <el-table-column label="Type">
+              <template slot-scope="scope">
+                <el-input v-model="scope.row.type" placeholder="Item Type">
+                  <el-button slot="prepend" @click="removeBudgetItem(scope.$index)">Delete</el-button> 
+                </el-input>
+              </template>
+            </el-table-column>
+            <el-table-column label="Amount" prop="amount">
+              <template slot-scope="scope">
+							<el-input v-model.number="scope.row.amount" type="number" placeholder="Item Amount"></el-input>
+              </template>
+            </el-table-column>
+            <el-table-column label="Rate" prop="rate">
+              <template slot-scope="scope">
+                <el-input v-model.number="scope.row.rate" type="number" placeholder="Item Rate"></el-input>
+              </template>
+            </el-table-column>
+          </el-table>
 				</el-row>
 			</el-col>
 		</el-row>
@@ -93,7 +104,9 @@ export default {
           title: 'Updated Budget',
           type: 'success',
           duration: 0
-        })
+        });
+
+        this.httpGetBudget();
       })
       .catch(e => {
         this.$notify.error({
@@ -119,8 +132,13 @@ export default {
           duration: 0
         })
       });
+    },
+    removeBudgetItem(index) {
+      this.budgetData.items.splice(index,1);
+    },
+    addBudgetItem(){
+      this.budgetData.items.push( {id: "", type: '', amount: null, rate: null, name: this.budgetData.startInfo.name });
     }
-
 	}
 }
 </script>

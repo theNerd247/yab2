@@ -161,17 +161,20 @@ $(makeAcidic ''YabAcid [
   ,'upsertEs
   ])
 
-insertExpenseItem db e = do
+insertExpenseItem db newE = do
+  e <- liftIO $ setNewBID newE
   hist <- makeAudit e
   update' db $ InsertE e
   update' db $ InsertEAudit $ hist & auditAction .~ Create
 
-insertBudgetItem db e = do
+insertBudgetItem db newE = do
+  e <- liftIO $ setNewBID newE
   hist <- makeAudit e
   update' db $ InsertB e
   update' db $ InsertBAudit $ hist & auditAction .~ Create
 
-insertStartInfo db s = do
+insertStartInfo db newS = do
+  s <- liftIO $ setNewBID newS
   hist <- makeAudit s
   update' db $ InsertSI s
   update' db $ InsertSAudit $ hist & auditAction .~ Create
@@ -252,20 +255,24 @@ updateBudgetList :: (MonadIO m) => YabAcidState -> BudgetList -> m ()
 updateBudgetList db newItems = do
   updateStartInfo db (newItems^.startInfo)
   oldItems <- toList <$> (getBudgetByName db (newItems^.name))
-  let updated = DL.intersectBy (\a b -> a^.bid == b^.bid) (newItems^.items) oldItems
-  let inserted = (newItems^.items) \\ oldItems
-  let deleted = oldItems \\ (newItems^.items)
+  let updated = DL.intersectBy elemSelect (newItems^.items) oldItems
+  let inserted = DL.deleteFirstsBy elemSelect (newItems^.items) oldItems
+  let deleted = DL.deleteFirstsBy elemSelect oldItems (newItems^.items)
   forM_ updated $ updateBudgetItem db
   forM_ inserted $ insertBudgetItem db
   forM_ deleted $ deleteBudgetItem db
+  where
+    elemSelect a b = a^.bid == b^.bid
 
 updateExpenseList :: (MonadIO m) => YabAcidState -> ExpenseList -> m ()
 updateExpenseList db newItems = do
   updateStartInfo db (newItems^.startInfo)
   oldItems <- toList <$> (getExpensesByName db (newItems^.name))
-  let updated = DL.intersectBy (\a b -> a^.bid == b^.bid) (newItems^.items) oldItems
-  let inserted = (newItems^.items) \\ oldItems
-  let deleted = oldItems \\ (newItems^.items)
+  let updated = DL.intersectBy elemSelect (newItems^.items) oldItems
+  let inserted = DL.deleteFirstsBy elemSelect (newItems^.items) oldItems
+  let deleted = DL.deleteFirstsBy elemSelect oldItems (newItems^.items)
   forM_ updated $ updateExpenseItem db
   forM_ inserted $ insertExpenseItem db
   forM_ deleted $ deleteExpenseItem db
+  where
+    elemSelect a b = a^.bid == b^.bid
