@@ -1,13 +1,10 @@
 <template>
 	<el-row>
 		<el-row>
-      <el-col :span="22">
-      <h1>Budget: {{ budgetName }}</h1>
-      </el-col>
-      <el-col :span="2">
-        <el-button @click=updateBudget()>Update Budget</el-button>
-      </el-col>
-    </el-row>
+			<el-col :span="22">
+				<h1>Budget: {{ budgetName }}</h1>
+			</el-col>
+		</el-row>
 
 		<el-row :gutter="20">
 			<el-col :span="12">
@@ -29,30 +26,34 @@
 							</el-date-picker>
 						</el-form-item>
 					</el-form>
-
-					<h2>Budget Items</h2>
-          <el-button @click="addBudgetItem()">Add Item</el-button>
-
-          <el-table :data="budgetData.items">
-            <el-table-column label="Type">
-              <template slot-scope="scope">
-                <el-input v-model="scope.row.type" placeholder="Item Type">
-                  <el-button slot="prepend" @click="removeBudgetItem(scope.$index)">Delete</el-button> 
-                </el-input>
-              </template>
-            </el-table-column>
-            <el-table-column label="Amount" prop="amount">
-              <template slot-scope="scope">
-							<el-input v-model.number="scope.row.amount" type="number" placeholder="Item Amount"></el-input>
-              </template>
-            </el-table-column>
-            <el-table-column label="Rate" prop="rate">
-              <template slot-scope="scope">
-                <el-input v-model.number="scope.row.rate" type="number" placeholder="Item Rate"></el-input>
-              </template>
-            </el-table-column>
-          </el-table>
 				</el-row>
+
+				<el-row>
+					<h2>Budget Items</h2>
+					<el-button @click=updateBudget()>Update Budget</el-button>
+					<el-button @click="addBudgetItem()">Add Item</el-button>
+
+					<el-table :data="budgetData.items">
+						<el-table-column label="Type">
+							<template slot-scope="scope">
+								<el-input v-model="scope.row.type" placeholder="Item Type">
+									<el-button slot="prepend" @click="removeBudgetItem(scope.$index)">Delete</el-button>
+								</el-input>
+							</template>
+						</el-table-column>
+						<el-table-column label="Amount">
+							<template slot-scope="scope">
+								<el-input v-model.number="scope.row.amount" type="number" placeholder="Item Amount"></el-input>
+							</template>
+						</el-table-column>
+						<el-table-column label="Rate">
+							<template slot-scope="scope">
+								<el-input v-model.number="scope.row.rate" type="number" placeholder="Item Rate"></el-input>
+							</template>
+						</el-table-column>
+					</el-table>
+				</el-row>
+
 			</el-col>
 		</el-row>
 	</el-row>
@@ -74,7 +75,7 @@ export default {
 		return {
 			budgetData: null,
 			budgetName: this.$route.params.name,
-			query: "/budget-list/name/" + this.$route.params.name
+			expensesData: null,
 		}
 	},
 	created () {
@@ -85,7 +86,7 @@ export default {
 			let sdate = moment().subtract(30, 'days').format();
 			let edate = moment().format();
 
-			HTTP.get(this.query)
+			HTTP.get("/budget-list/name/" + this.$route.params.name)
 				.then(response => {
 					this.budgetData = response.data;
 				})
@@ -97,48 +98,48 @@ export default {
 					})
 				});
 		},
-    updateBudget() {
-      HTTP.put(this.query, this.budgetData)
-      .then(response => {
-        this.$notify({
-          title: 'Updated Budget',
-          type: 'success',
-          duration: 0
-        });
+		updateBudget() {
+			HTTP.put("/budget-list/name/" + this.$route.params.name, this.budgetData)
+				.then(response => {
+					this.$notify({
+						title: 'Updated Budget',
+						type: 'success',
+						duration: 0
+					});
 
-        this.httpGetBudget();
-      })
-      .catch(e => {
-        this.$notify.error({
-          title: 'Error',
-          message: 'Could not update budget:\n' + JSON.stringify(e.response.data),
-          duration: 0
-        })
-      });
-    },
-    getStartAmount() {
-      HTTP.get(this.query, )
-      .then(response => {
-        this.$notify({
-          title: 'Updated Budget',
-          type: 'success',
-          duration: 0
-        })
-      })
-      .catch(e => {
-        this.$notify.error({
-          title: 'Error',
-          message: 'Could not update budget:\n' + JSON.stringify(e.response.data),
-          duration: 0
-        })
-      });
-    },
-    removeBudgetItem(index) {
-      this.budgetData.items.splice(index,1);
-    },
-    addBudgetItem(){
-      this.budgetData.items.push( {id: "", type: '', amount: null, rate: null, name: this.budgetData.startInfo.name });
-    }
+					this.httpGetBudget();
+				})
+				.catch(e => {
+					this.$notify.error({
+						title: 'Error',
+						message: 'Could not update budget:\n' + JSON.stringify(e.response.data),
+						duration: 0
+					})
+				});
+		},
+		getStartAmount() {
+			HTTP.get(this.query, )
+				.then(response => {
+					this.$notify({
+						title: 'Updated Budget',
+						type: 'success',
+						duration: 0
+					})
+				})
+				.catch(e => {
+					this.$notify.error({
+						title: 'Error',
+						message: 'Could not update budget:\n' + JSON.stringify(e.response.data),
+						duration: 0
+					})
+				});
+		},
+		removeBudgetItem(index) {
+			this.budgetData.items.splice(index,1);
+		},
+		addBudgetItem(){
+			this.budgetData.items.push( {id: "", type: '', amount: null, rate: null, name: this.budgetData.startInfo.name });
+		},
 	}
 }
 </script>
