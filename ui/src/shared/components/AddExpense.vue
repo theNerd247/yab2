@@ -39,7 +39,6 @@ export default {
 	},
 	data  () {
 		return {
-			expenses: [],
 			newExpense: {
 				name: '',
 				amount: 0,

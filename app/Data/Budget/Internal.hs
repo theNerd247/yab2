@@ -223,7 +223,12 @@ dayToDate d = UTCTime d 0
 -- runs a budget for "p" periods given a starting amount "start" and returns the
 -- final balance. 
 {-getBalanceAtPeriod :: (BudgetAtPeriod a, HasStartInfo (f a), Traversal' (f a) a) => Rate -> (f a) -> Amount-}
-getBalanceAtPeriod p b = (b^.startAmount) + (b^.balanceDiff p)
+getBalanceAtPeriod p b = (b^.startAmount) + diff
+  where
+    diff 
+      | p == 0 = 0
+      | p > 0 = sum $ [1..p]^..traverse.to (\p -> b^.balanceDiff p)
+      | p < 0 = ((-1)*) . sum $ [(p+1)..0]^..traverse.to (\p -> b^.balanceDiff p)
 
 -- the sum of item amounts relative to the budget start amount and relative to
 -- the start date
@@ -240,7 +245,7 @@ earliestStartInfo xs = Just . head $ DL.sortOn (view startDate) xs
 -- returns the difference of the budget balance (b2 - b1) at each period between
 -- the start and end times
 compareBudgetsBetween :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a, BudgetAtPeriod b, HasStartInfo (g b), HasYabList (g b) b) => Rate -> Rate -> (f a) -> (g b) -> [(Rate,Amount,Amount)]
-compareBudgetsBetween start end b1 b2 = [start..end]^..traverse . to (\t -> let x = compareBudgetsOn t b1 b2 in (t,x^._1,x^._2))
+compareBudgetsBetween start end b1 b2 = zip3 ([start..end]) (getBalancesBetween start end b1) (getBalancesBetween start end b2)
 
 compareBudgetsOn p b1 b2 = ((getBalanceAtPeriod p b1), (getBalanceAtPeriod p b2))
 

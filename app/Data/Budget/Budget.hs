@@ -62,7 +62,9 @@ instance Indexable BudgetItem where
 instance BudgetAtPeriod BudgetItem where
   budgetAmountAtPeriod _ p = to gt
     where
-      gt b = (b^.amount)*(fromIntegral . floor . toRational $ p `div` (b^.rate))
+      gt b 
+        | p `mod` (b^.rate) == 0 = b^.amount
+        | otherwise = 0
 
 instance HasBID BudgetItem where
   bid = budgetItemBID

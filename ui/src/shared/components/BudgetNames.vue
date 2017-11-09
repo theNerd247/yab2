@@ -1,5 +1,5 @@
 <template>
-  <el-select v-model="budgetName" placeholder="Budget Name" v-on:change="emitChange">
+  <el-select v-model="bname" placeholder="Budget Name" v-on:change="emitChange">
     <el-option v-for="(item,index) in budgetNames" :key="index" :value="item" :label="item">
     </el-option>
   </el-select>
