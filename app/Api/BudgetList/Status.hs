@@ -70,7 +70,7 @@ listByDayRange = mkCustomListing (dayRangeParam . jsonO) $ \env -> do
   let sp = (dayToRate (budget^.startDate) stime)
   let ep = (dayToRate (budget^.startDate) etime)
   let cs = compareBudgetsBetween sp ep  budget expenses
-  return $ (DL.sortOn (view _1) cs) & traverse . _1 %~ (rateToDay $ budget^.startDate)
+  return $ (DL.sortOn (view _1) cs) & traverse . _1 %~ (periodToDay $ budget^.startDate)
 
 listAll :: ListHandler WithBudget
 listAll = mkListing jsonO $ \range -> do 
@@ -79,4 +79,5 @@ listAll = mkListing jsonO $ \range -> do
   budget <- (asYabList db name $ getBudgetByName db name) !? NotAllowed
   expenses <- (asYabList db name $ getExpensesByName db name) !? NotAllowed
   let cs = compareBudgetsBetween (offset range) ((offset range) + (count range)) budget expenses
-  return $ (DL.sortOn (view _1) cs) & traverse . _1 %~ (rateToDay $ budget^.startDate)
+  return $ (DL.sortOn (view _1) cs) & traverse . _1 %~ (periodToDay $ budget^.startDate)
+

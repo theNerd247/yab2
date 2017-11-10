@@ -24,12 +24,14 @@ import Data.IxSet
 import Data.JSON.Schema hiding (Proxy, Object)
 import Data.SafeCopy
 import Data.Time
+import qualified Data.Budget.BudgetMigration as BEM
+import Data.Budget.InternalMigration
 import GHC.Generics hiding (to)
 import qualified Data.Text as DT
 import qualified Data.Text as DT
 
 data BudgetItem = BudgetItem 
-  { _rate :: Rate
+  { _budgetItemRate :: Rate
   , _budgetItemBudgetAmount :: BudgetAmount
   , _budgetName :: Name
   , _budgetItemBID :: BID
@@ -47,7 +49,7 @@ type BudgetAuditDB = AuditDB BudgetItem
 
 makeClassy ''BudgetItem
 
-$(deriveSafeCopy 0 'base ''BudgetItem)
+$(deriveSafeCopy 1 'extension ''BudgetItem)
 
 instance Default BudgetItem
 
@@ -59,12 +61,14 @@ instance Indexable BudgetItem where
     , ixFun $ (:[]) . (view amountType)
     ]
 
-instance BudgetAtPeriod BudgetItem where
-  budgetAmountAtPeriod _ p = to gt
-    where
-      gt b 
-        | p `mod` (b^.rate) == 0 = b^.amount
-        | otherwise = 0
+instance Migrate BudgetItem where
+  type MigrateFrom BudgetItem = BEM.BudgetItem_v0
+  migrate b = BudgetItem  
+    { _budgetItemRate = Periodic $ BEM._budgetItemRate b
+    , _budgetItemBudgetAmount = BEM._budgetItemBudgetAmount b
+    , _budgetName = BEM._budgetName b
+    , _budgetItemBID = BEM._budgetItemBID b
+    }
 
 instance HasBID BudgetItem where
   bid = budgetItemBID
@@ -74,6 +78,9 @@ instance HasName BudgetItem where
 
 instance HasBudgetAmount BudgetItem where
   budgetAmount = budgetItemBudgetAmount
+
+instance HasRate BudgetItem where
+  rate = budgetItemRate
   
 instance JSONSchema BudgetItem where
   schema = gSchema

@@ -29,13 +29,17 @@ import Data.JSON.Schema hiding (Proxy, Object)
 import Data.Monoid
 import Data.SafeCopy
 import Data.Time
+import Data.Budget.InternalMigration
 import GHC.Generics hiding (to)
 import qualified Data.List as DL
 import qualified Data.Text as DT
 
 type Amount = Double
 
-type Rate = Int
+type Period = Int
+
+data Rate = Periodic Period | OneTime UTCTime
+  deriving (Eq,Ord,Read,Show,Data,Typeable,Generic)
 
 type Name = String
 
@@ -67,7 +71,15 @@ data YabList a = YabList
 
 makeClassy ''StartInfo
 
+makeClassy ''Rate
+
 makeClassy ''BudgetAmount
+
+instance Migrate Rate where
+  type MigrateFrom Rate = Rate_v0
+  migrate = Periodic
+
+$(deriveSafeCopy 1 'extension ''Rate)
 
 $(deriveSafeCopy 0 'base ''AmountType)
 
@@ -92,10 +104,8 @@ class HasYabList m a | m -> a where
   yabListStartInfo :: Lens' m StartInfo
   yabListStartInfo = yabList . yabListStartInfo
 
-class BudgetAtPeriod a where
-  -- | gets a difference amount relative to the start amount of the budget for a
-  -- period that is relative to the start date.
-  budgetAmountAtPeriod :: (HasStartInfo s) => s -> Rate -> Getter a Amount
+instance Default Rate where
+  def = Periodic 0
 
 instance Default BudgetAmount
 
@@ -113,6 +123,8 @@ instance FromJSON BudgetAmount where
     <$> o .: "amount"
     <*> o .: "type"
   parseJSON _ = mempty
+
+instance FromJSON Rate
 
 instance (FromJSON a) => FromJSON (YabList a) where
   parseJSON v@(Object o) = YabList
@@ -166,6 +178,8 @@ instance JSONSchema BudgetAmount where
 instance JSONSchema StartInfo where
   schema = gSchema
 
+instance JSONSchema Rate where
+  schema = gSchema
 
 instance (JSONSchema a) => JSONSchema (YabList a) where
   schema = gSchema
@@ -186,6 +200,8 @@ instance ToJSON BudgetAmount where
 
 instance ToJSON AmountType where
   toJSON (AmountType s) = toJSON s
+
+instance ToJSON Rate
 
 instance ToJSON StartInfo where
   toJSON = object . budgetStartJSON
@@ -211,14 +227,31 @@ budgetStartJSON b =
 listToDB :: (Typeable a, Ord a, Indexable a) => YabList a -> YabDB a
 listToDB = fromList . (view items)
 
-dayToRate :: UTCTime -> UTCTime -> Rate
-dayToRate s = fromInteger . flip diffDays (utctDay s) . utctDay
+{-# DEPRECATED dayToRate "Use dayToPeriod" #-}
+dayToRate = dayToPeriod
 
-rateToDay :: UTCTime -> Rate -> UTCTime
-rateToDay s r = UTCTime (flip addDays (utctDay s) . toInteger $ r) 0
+{-# DEPRECATED rateToDay "Use dayToPeriod" #-}
+rateToDay = periodToDay
+
+dayToPeriod :: UTCTime -> UTCTime -> Period
+dayToPeriod s = fromInteger . flip diffDays (utctDay s) . utctDay
+
+rateToPeriod :: (HasStartInfo s) => s -> Rate -> Period
+rateToPeriod _ (Periodic p) = p
+rateToPeriod s (OneTime p) = dayToPeriod (s^.startDate) p
+
+periodToDay :: UTCTime -> Period -> UTCTime
+periodToDay s r = UTCTime (flip addDays (utctDay s) . toInteger $ r) 0
 
 dayToDate :: Day -> UTCTime
 dayToDate d = UTCTime d 0
+
+budgetAmountAtPeriod :: (HasRate i, HasBudgetAmount i, HasStartInfo s) => s -> Period -> Getter i Amount
+budgetAmountAtPeriod s p = to gt
+  where
+    gt b
+      | p `mod` (rateToPeriod s $ b^.rate) == 0 = b^.amount
+      | otherwise = 0
 
 -- runs a budget for "p" periods given a starting amount "start" and returns the
 -- final balance. 
@@ -232,7 +265,7 @@ getBalanceAtPeriod p b = (b^.startAmount) + diff
 
 -- the sum of item amounts relative to the budget start amount and relative to
 -- the start date
-balanceDiff p = to $ \b -> sum $ b^..items.traverse.budgetAmountAtPeriod (b^.startInfo) p
+balanceDiff p = to $ \b -> sum $ b^..items.traverse.budgetAmountAtPeriod b p
 
 -- gets the budget balance from start to end periods (both inclusive)
 {-getBalancesBetween :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a) => Rate -> Rate -> (f a) -> [Amount]-}
@@ -244,25 +277,22 @@ earliestStartInfo xs = Just . head $ DL.sortOn (view startDate) xs
 
 -- returns the difference of the budget balance (b2 - b1) at each period between
 -- the start and end times
-compareBudgetsBetween :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a, BudgetAtPeriod b, HasStartInfo (g b), HasYabList (g b) b) => Rate -> Rate -> (f a) -> (g b) -> [(Rate,Amount,Amount)]
 compareBudgetsBetween start end b1 b2 = zip3 ([start..end]) (getBalancesBetween start end b1) (getBalancesBetween start end b2)
 
 compareBudgetsOn p b1 b2 = ((getBalanceAtPeriod p b1), (getBalanceAtPeriod p b2))
 
 -- get's the first period where the budget balance is <= 0
-getEmptyDate :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a) => f a -> Rate
-getEmptyDate budget = g 0
-    where
-      g n
-        | (f n) <= 0 = n
-        | otherwise = g (n+1)
-      f n = getBalanceAtPeriod (n+1) budget
+{-getEmptyDate :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a) => f a -> Rate-}
+{-getEmptyDate budget = g 0-}
+    {-where-}
+      {-g n-}
+        {-| (f n) <= 0 = n-}
+        {-| otherwise = g (n+1)-}
+      {-f n = getBalanceAtPeriod (n+1) budget-}
 
-getBalances :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a) => Rate -> Rate -> f a -> [Amount]
 getBalances s e b = [s..e]^..traverse . to (\d -> getBalanceAtPeriod d b)
 
 -- prints the balance of the budget at each period from start to end
-printBalances :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a) => Rate -> Rate -> f a -> IO ()
 printBalances start end budget = sequence_ $ [start..end]^..traverse . to printBal
   where
     printBal d = putStrLn $ 
@@ -271,10 +301,9 @@ printBalances start end budget = sequence_ $ [start..end]^..traverse . to printB
       ++ (show $ getBalanceAtPeriod d budget)
 
 -- gets the budget balance for the current day (this uses utc time)
-currentBudgetBal :: (BudgetAtPeriod a, HasStartInfo (f a), HasYabList (f a) a) => f a -> IO Amount
 currentBudgetBal b = do 
   n <- getCurrentTime
-  return $ getBalanceAtPeriod (dayToRate (b^.startDate) n) b
+  return $ getBalanceAtPeriod (dayToPeriod (b^.startDate) n) b
 
 -- updates each element by the given key using updateIx
 updateDBItems :: (HasYabDB r a, MonadState s m, Ord a, Indexable a, Typeable k, Typeable a) => Lens' s r -> k -> [a] -> m ()

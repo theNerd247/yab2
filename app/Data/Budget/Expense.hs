@@ -25,12 +25,13 @@ import Data.IxSet
 import Data.JSON.Schema hiding (Proxy, Object)
 import Data.SafeCopy
 import Data.Time
+import qualified Data.Budget.ExpenseMigration as BEM
 import GHC.Generics hiding (to)
 import qualified Data.List as DL
 import qualified Data.Text as DT
 
 data ExpenseItem = ExpenseItem
-  { _expenseDate :: UTCTime
+  { _expenseRate :: Rate
   , _expenseReason :: String
   , _expenseItemBudgetAmount :: BudgetAmount
   , _expenseBID :: BID
@@ -47,17 +48,10 @@ type ExpenseAuditDB = AuditDB ExpenseItem
 
 makeClassy ''ExpenseItem
 
-$(deriveSafeCopy 0 'base ''ExpenseItem)
+$(deriveSafeCopy 1 'extension ''ExpenseItem)
 
 instance HasBID ExpenseItem where
   bid = expenseBID
-
-instance BudgetAtPeriod ExpenseItem where
-  budgetAmountAtPeriod s p = to gt
-    where 
-      gt e
-        | dayToRate (s^.startDate) (e^.expenseDate) == p = e^.amount
-        | otherwise = 0
 
 instance Default ExpenseItem
 
@@ -76,6 +70,12 @@ instance HasBudgetAmount ExpenseItem where
 instance HasName ExpenseItem where
   name = expenseBudgetName
 
+instance HasRate ExpenseItem where
+  rate = expenseRate
+
+{-# DEPRECATED expenseDate "Use expenseRate instead" #-}
+expenseDate = expenseRate
+
 instance Indexable ExpenseItem where
   empty = ixSet
     [ ixFun $ (:[]) . (view bid)
@@ -84,6 +84,16 @@ instance Indexable ExpenseItem where
     , ixFun $ (:[]) . (view amountType)
     , ixFun $ (:[]) . (view amount)
     ]
+
+instance Migrate ExpenseItem where
+  type MigrateFrom ExpenseItem = BEM.ExpenseItem_v0
+  migrate e = ExpenseItem
+    { _expenseRate = OneTime $ BEM._expenseDate e
+    , _expenseReason = BEM._expenseReason e
+    , _expenseItemBudgetAmount = BEM._expenseItemBudgetAmount e
+    , _expenseBID = BEM._expenseBID e
+    , _expenseBudgetName = BEM._expenseBudgetName e
+    }
 
 instance JSONSchema ExpenseItem where
   schema = gSchema
