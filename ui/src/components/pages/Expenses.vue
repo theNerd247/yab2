@@ -6,18 +6,12 @@
 
   <el-row>
     <h2>Expenses</h2>
-    <el-button @click="updateExpenses()">Update Expenses</el-button>
     <el-button @click="addExpensesItem()">Add Item</el-button>
     <el-table :data="expensesData.items" height="100%">
       <el-table-column label="" fixed>
         <template slot-scope="scope">
-            <el-button @click="removeExpensesItem(scope.$index)">Update</el-button>
+            <el-button @click="updateExpenseItem(scope.$index)">Update</el-button>
             <el-button @click="updateExpenseItem(scope.$index)">Delete</el-button>
-        </template>
-      </el-table-column>
-      <el-table-column label="Type">
-        <template slot-scope="scope">
-          <el-input v-model="scope.row.type" placeholder="Item Type"></el-input>
         </template>
       </el-table-column>
       <el-table-column label="Date">
@@ -25,6 +19,16 @@
           <el-input v-model="scope.row.date" placeholder="Date">
             <el-button slot="prepend" @click="removeExpensesItem(scope.$index)">Delete</el-button>
           </el-input>
+        </template>
+      </el-table-column>
+      <el-table-column label="Budget">
+        <template slot-scope="scope">
+          <el-input v-model="scope.row.name" placeholder="Budget Name"></el-input>
+        </template>
+      </el-table-column>
+      <el-table-column label="Type">
+        <template slot-scope="scope">
+          <el-input v-model="scope.row.type" placeholder="Item Type"></el-input>
         </template>
       </el-table-column>
       <el-table-column label="Amount">
@@ -74,30 +78,31 @@ export default {
           })
         });
     },
-    updateExpenses () {
-      HTTP.put("/expense-list/name/" + this.$route.params.name, this.expensesData)
-        .then(response => {
+    httpUpdateExpenseItem(item){
+      HTTP.put("/expense-list/name/" + this.$route.params.name + "/expense/id/" + item.id, item)
+        .then(resp => {
           this.$notify({
-            title: 'Updated Expenses',
+            title: 'Updated Expense Item',
             type: 'success',
             duration: 0
-          });
-
-          this.httpGetExpenses();
+          })
         })
         .catch(e => {
           this.$notify.error({
             title: 'Error',
-            message: 'Could not update expenses:\n' + JSON.stringify(e.response.data),
+            message: 'Could not update expense item',
             duration: 0
           })
-        });
+        })
     },
     removeExpensesItem(index) {
       this.expensesData.items.splice(index,1);
     },
     addExpensesItem(){
       this.expensesData.items.push( {id: "", type: '', amount: null, rate: null, name: this.expensesData.startInfo.name });
+    },
+    updateExpenseItem(index){
+      this.httpUpdateExpenseItem(this.expensesData.items[index]);
     }
   }
 }

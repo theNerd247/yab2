@@ -28,6 +28,7 @@ resource = mkResourceReader
   , R.schema = noListing $ named [("id",singleBy BID)]
   , R.create = Just create
   , R.get = Just get
+  , R.update = Just update
   }
 
 get :: Handler WithExpenseItem
@@ -46,3 +47,8 @@ create = mkInputHandler (jsonI . jsonO) handler
       newItem' <- liftIO $ setNewBID newItem
       insertExpenseItem db $ newItem' & name .~ nm
       return $ newItem'
+
+update :: Handler WithExpenseItem
+update = mkInputHandler (jsonI . jsonO) $ \e -> do
+  db <- (lift . lift . lift) (asks $ view db)
+  updateExpenseItem db e
