@@ -247,11 +247,18 @@ dayToDate :: Day -> UTCTime
 dayToDate d = UTCTime d 0
 
 budgetAmountAtPeriod :: (HasRate i, HasBudgetAmount i, HasStartInfo s) => s -> Period -> Getter i Amount
-budgetAmountAtPeriod s p = to gt
+budgetAmountAtPeriod s p = to $ \b -> rt (b^.rate) b
   where
-    gt b
-      | p `mod` (rateToPeriod s $ b^.rate) == 0 = b^.amount
+    rt (OneTime t) b = withO t b
+    rt (Periodic r) b = withP r b
+    withP r b
+      | r == 0 = 0
+      | p `mod` r == 0 = b^.amount
       | otherwise = 0
+    withO t b
+      | (dayToPeriod (s^.startDate) t) == p = b^.amount
+      | otherwise = 0
+      
 
 -- runs a budget for "p" periods given a starting amount "start" and returns the
 -- final balance. 
