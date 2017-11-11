@@ -108,7 +108,13 @@ export default {
       this.expensesData.items.splice(index,1);
     },
     addExpensesItem(){
-      this.expensesData.items.push( {id: "", type: '', amount: null, rate: null, name: this.expensesData.startInfo.name });
+      this.expensesData.items.push( {
+        id: "", 
+        type: '', 
+        amount: null, 
+        rate: {tag: "OneTime", contents: moment().utc().format("YYYY-MM-DD") },
+        name: this.expensesData.startInfo.name 
+      });
     },
     updateExpenseItem(index){
       this.httpUpdateExpenseItem(this.expensesData.items[index]);

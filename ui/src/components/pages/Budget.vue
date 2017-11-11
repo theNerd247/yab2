@@ -144,7 +144,14 @@ export default {
 			this.budgetData.items.splice(index,1);
 		},
 		addBudgetItem(){
-			this.budgetData.items.push( {id: "", type: '', amount: null, rate: null, name: this.budgetData.startInfo.name });
+			
+      this.budgetData.items.push( {
+        id: "", 
+        type: '', 
+        amount: null, 
+        rate: {tag: "Periodic", contents: 0},
+        name: this.budgetData.startInfo.name 
+      });
 		},
 	}
 }
