@@ -2,7 +2,7 @@
   <el-row>
     <el-row>
       <el-col :span="22">
-      <h1>Budget: {{ budgetName }}</h1>
+        <h1>Budget: {{ budgetName }}</h1>
       </el-col>
 
       <el-col :span="2">
@@ -13,7 +13,8 @@
     <el-row>
       <h2>Expenses</h2>
       <el-button @click="addExpensesItem()">Add Item</el-button>
-      <el-table :data="expensesData.items" height="100%">
+      <el-button @click="updateExpenses()">Update Expenses</el-button>
+      <el-table :data="expensesData.items">
         <el-table-column label="" fixed>
           <template slot-scope="scope">
             <el-button @click="updateExpenseItem(scope.$index)">Update</el-button>
@@ -87,6 +88,25 @@ export default {
           })
         });
     },
+    updateExpenses() {
+      HTTP.put("/expense-list/name/" + this.$route.params.name, this.expensesData)
+        .then(response => {
+          this.$notify({
+            title: 'Updated Expenses',
+            type: 'success',
+            duration: 0
+          });
+
+          this.httpGetExpenses();
+        })
+        .catch(e => {
+          this.$notify.error({
+            title: 'Error',
+            message: 'Could not update budget:\n' + JSON.stringify(e.response.data),
+            duration: 0
+          })
+        });
+    },
     httpUpdateExpenseItem(item){
       HTTP.put("/expense-list/name/" + this.$route.params.name + "/expense/id/" + item.id, item)
         .then(resp => {
@@ -109,11 +129,11 @@ export default {
     },
     addExpensesItem(){
       this.expensesData.items.push( {
-        id: "", 
-        type: '', 
-        amount: null, 
-        rate: {tag: "OneTime", contents: moment().utc().format("YYYY-MM-DD") },
-        name: this.expensesData.startInfo.name 
+        id: "",
+        type: '',
+        amount: 0,
+        date: {tag: "OneTime", contents: moment().format() },
+        name: this.expensesData.startInfo.name
       });
     },
     updateExpenseItem(index){
