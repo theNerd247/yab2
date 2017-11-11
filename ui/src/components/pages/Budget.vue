@@ -37,7 +37,7 @@
 					<el-button @click=updateBudget()>Update Budget</el-button>
 					<el-button @click="addBudgetItem()">Add Item</el-button>
 
-					<el-table :data="budgetData.items">
+					<el-table :data="budgetData.items" :default-sort="{prop: 'id'}" row-key="id">
 						<el-table-column label="Type">
 							<template slot-scope="scope">
 								<el-input v-model="scope.row.type" placeholder="Item Type">
