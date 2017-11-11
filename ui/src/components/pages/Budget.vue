@@ -1,10 +1,14 @@
 <template>
 	<el-row>
-		<el-row>
-			<el-col :span="22">
-				<h1>Budget: {{ budgetName }}</h1>
-			</el-col>
-		</el-row>
+    <el-row>
+      <el-col :span="22">
+      <h1>Budget: {{ budgetName }}</h1>
+      </el-col>
+
+      <el-col :span="2">
+        <router-link tag="el-button" :to="{name: 'Expenses', params: {name: this.$route.params.name}}">Go To Expenses</router-link>
+      </el-col>
+    </el-row>
 
 		<el-row :gutter="20">
 			<el-col :span="12">
@@ -48,7 +52,7 @@
 						</el-table-column>
 						<el-table-column label="Rate">
 							<template slot-scope="scope">
-								<el-input v-model.number="scope.row.rate" type="number" placeholder="Item Rate"></el-input>
+								<rate :rate.sync="scope.row.rate"></rate>
 							</template>
 						</el-table-column>
 					</el-table>
@@ -62,6 +66,7 @@
 <script>
 	import Vue from 'vue'
 import BudgetsGraph from '@/shared/components/BudgetsGraph.vue'
+import Rate from '@/shared/components/Rate.vue'
 import statusJSON from '@/assets/budget-status.json'
 import _ from 'lodash'
 import { HTTP, baseURL } from '@/shared/http-common'
@@ -69,7 +74,8 @@ import moment from 'moment'
 
 export default {
 	components: {
-		BudgetsGraph
+		BudgetsGraph,
+		Rate
 	},
 	data () {
 		return {
