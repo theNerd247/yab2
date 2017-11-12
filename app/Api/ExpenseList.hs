@@ -40,12 +40,11 @@ resource = mkResourceReader
   }
 
 get :: Handler WithExpenseList
-get = mkIdHandler jsonO handler
-  where
-    handler :: () -> Identifier -> ExceptT Reason_ WithExpenseList ExpenseList
-    handler _ name = do 
-      db <- (lift . lift) (asks $ view db)
-      (asYabList db name $ getExpensesByName db name) !? NotFound
+get = mkHandler (mkPar range . jsonO) $\env -> do 
+  name <- ask
+  let range = param env
+  db <- (lift . lift) (asks $ view db)
+  (asYabList db name $ getExpensesByName db name) !? NotFound
 
 list :: ListHandler YabApi
 list = mkListing jsonO $ \range -> do

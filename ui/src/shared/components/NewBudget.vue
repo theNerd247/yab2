@@ -62,30 +62,23 @@ export default {
       this.newBudget.startInfo.startDate = moment(this.newBudget.startDate).format();
       this.newBudget.items = _.map(this.newBudget.items, x => {x.name = this.newBudget.name; return x});
 
-      console.log(this.newBudget);
-      HTTP.post('budget-list', this.newBudget)
-      .then(response => {
-        this.$notify({
-          title: 'Created new budget',
-          message: response.data.startInfo.name,
-          type: 'success',
-          duration: 0
-        })
-      })
-      .catch(e => {
-        this.$notify.error({
-          title: 'Error',
-          message: 'Could not create new budget:\n' + JSON.stringify(e.response.data),
-          duration: 0
-        })
-      });
+      httpWithNotify(
+        'Created new budget', 
+        'Could not create budget',
+        function () { return HTTP.post('budget-list', this.newBudget) });
+      },
 
-    },
     removeItem(index) {
       this.newBudget.items.splice(index,1);
     },
     addItem(){
-      this.newBudget.items.push( {id: 0, type: '', amount: null, rate: null, name: '' });
+      this.newBudget.items.push( {
+        id: 0, 
+        type: '', 
+        amount: null, 
+        rate: {tag: "Periodic", contents: 0}, 
+        name: '' 
+      });
     }
 	}
 }

@@ -1,14 +1,14 @@
 <template>
 	<el-row>
-    <el-row>
-      <el-col :span="22">
-      <h1>Budget: {{ budgetName }}</h1>
-      </el-col>
+		<el-row>
+			<el-col :span="22">
+				<h1>Budget: {{ budgetName }}</h1>
+			</el-col>
 
-      <el-col :span="2">
-        <router-link tag="el-button" :to="{name: 'Expenses', params: {name: this.$route.params.name}}">Go To Expenses</router-link>
-      </el-col>
-    </el-row>
+			<el-col :span="2">
+				<router-link tag="el-button" :to="{name: 'Expenses', params: {name: this.$route.params.name}}">Go To Expenses</router-link>
+			</el-col>
+		</el-row>
 
 		<el-row :gutter="20">
 			<el-col :span="12">
@@ -34,7 +34,7 @@
 
 				<el-row>
 					<h2>Budget Items</h2>
-					<el-button @click=updateBudget()>Update Budget</el-button>
+					<el-button @click=httpUpdateBudget()>Update Budget</el-button>
 					<el-button @click="addBudgetItem()">Add Item</el-button>
 
 					<el-table :data="budgetData.items" :default-sort="{prop: 'id'}" row-key="id">
@@ -69,7 +69,7 @@ import BudgetsGraph from '@/shared/components/BudgetsGraph.vue'
 import Rate from '@/shared/components/Rate.vue'
 import statusJSON from '@/assets/budget-status.json'
 import _ from 'lodash'
-import { HTTP, baseURL } from '@/shared/http-common'
+import { HTTP, httpWithNotify } from '@/shared/http-common'
 import moment from 'moment'
 
 export default {
@@ -88,70 +88,34 @@ export default {
 		this.httpGetBudget();
 	},
 	methods: {
-		httpGetBudget(){
-			let sdate = moment().subtract(30, 'days').format();
-			let edate = moment().format();
-
-			HTTP.get("/budget-list/name/" + this.$route.params.name)
-				.then(response => {
-					this.budgetData = response.data;
-				})
-				.catch(e => {
-					this.$notify.error({
-						title: 'Error',
-						message: 'Could not get expenses at: ' + query,
-						duration: 0
-					})
-				});
+		httpGetBudget () {
+			let query = "/budget-list/name/" + this.$route.params.name;
+			this.budgetData = httpWithNotify(
+				'',
+				"Could not get expenses",
+			  HTTP.get(query),
+				true).then(d => this.budgetData = d);
 		},
-		updateBudget() {
-			HTTP.put("/budget-list/name/" + this.$route.params.name, this.budgetData)
-				.then(response => {
-					this.$notify({
-						title: 'Updated Budget',
-						type: 'success',
-						duration: 0
-					});
-
-					this.httpGetBudget();
-				})
-				.catch(e => {
-					this.$notify.error({
-						title: 'Error',
-						message: 'Could not update budget:\n' + JSON.stringify(e.response.data),
-						duration: 0
-					})
-				});
-		},
-		getStartAmount() {
-			HTTP.get(this.query, )
-				.then(response => {
-					this.$notify({
-						title: 'Updated Budget',
-						type: 'success',
-						duration: 0
-					})
-				})
-				.catch(e => {
-					this.$notify.error({
-						title: 'Error',
-						message: 'Could not update budget:\n' + JSON.stringify(e.response.data),
-						duration: 0
-					})
-				});
+		httpUpdateBudget () {
+			let query = "/budget-list/name/" + this.$route.params.name;
+			let t = this.budgetData;
+			httpWithNotify(
+				'Updated Budget',
+				'Could not update budget',
+				HTTP.put(query, t)
+			).then(d => this.budgetData = d);
 		},
 		removeBudgetItem(index) {
 			this.budgetData.items.splice(index,1);
 		},
 		addBudgetItem(){
-			
-      this.budgetData.items.push( {
-        id: "", 
-        type: '', 
-        amount: null, 
-        rate: {tag: "Periodic", contents: 0},
-        name: this.budgetData.startInfo.name 
-      });
+			this.budgetData.items.push( {
+				id: "",
+				type: '',
+				amount: null,
+				rate: {tag: "Periodic", contents: 0},
+				name: this.budgetData.startInfo.name
+			});
 		},
 	}
 }
