@@ -12,10 +12,9 @@
 		<el-pagination
 			@current-change="handleCurrentChange"
 			:current-page.sync="curPage"
-			:page-sizes="[50, 100, 200]"
 			:page-size="count"
-			layout="total, sizes, prev, pager, next, jumper"
-			:total="total"
+			layout="total, prev, pager, next, jumper"
+			:page-count="total"
 			>
 		</el-pagination>
 	</div>
@@ -28,7 +27,7 @@ export default {
 	props: ['url','itemUrl','tdata'],
 	data() {
 		return{
-			count: 50,
+			count: 20,
 			curPage: 0,
 			offset: 0,
 			total: 0,
@@ -37,6 +36,10 @@ export default {
 	},
 	created() {
 		this.httpGetData();
+		httpWithNotify('',"Couldn't get status", HTTP.get(this.url+"/size"),
+			true).then(d => {
+				this.total = Math.ceil(d/this.count);
+			});
 	},
 	methods:{
 		httpGetData(){
@@ -52,7 +55,6 @@ export default {
 				true
 			).then(d => {
 				this.tableData = d;
-				this.total = this.tableData.items.length;
 				this.emitChange();
 			});
 		},
@@ -100,7 +102,8 @@ export default {
 			this.emitChange();
 		},
 		handleCurrentChange(){
-			this.offset = this.curPage*this.count;
+			this.offset = (this.curPage-1)*this.count;
+			this.httpGetData();
 		},
 		emitChange(){
 			this.$emit('update:tdata', this.tableData);

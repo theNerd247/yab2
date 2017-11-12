@@ -12,7 +12,7 @@ import Data.Data
 import GHC.Generics
 import Data.IxSet
 import Control.Monad (forM)
-import Control.Monad.Reader (MonadReader, ReaderT (..), asks)
+import Control.Monad.Reader (MonadReader, ReaderT (..), asks, ask)
 import Control.Monad.Trans (MonadIO, lift, liftIO)
 import Control.Monad.Trans.Except (ExceptT, throwE)
 import Data.JSON.Schema hiding (Proxy)
@@ -37,14 +37,22 @@ resource = mkResourceReader
   , R.get = Just get
   , R.create = Just create
   , R.update = Just update
+  , R.selects = [("size", getSize)]
   }
 
+getSize :: Handler WithExpenseList
+getSize = mkIdHandler jsonO $ \_ name -> do
+  db <- (lift . lift) (asks $ view db)
+  bl <- getExpensesByName db name
+  return $ size bl
+
 get :: Handler WithExpenseList
-get = mkHandler (mkPar range . jsonO) $\env -> do 
+get = mkHandler (mkPar range . jsonO) $ \env -> do 
   name <- ask
   let range = param env
   db <- (lift . lift) (asks $ view db)
-  (asYabList db name $ getExpensesByName db name) !? NotFound
+  bl <- (asYabList db name $ getExpensesByName db name) !? NotFound
+  return $ bl & items %~ (take (count range) . drop (offset range))
 
 list :: ListHandler YabApi
 list = mkListing jsonO $ \range -> do

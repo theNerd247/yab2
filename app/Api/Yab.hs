@@ -15,6 +15,6 @@ yab100 :: Router YabApi YabApi
 yab100 = root 
   -/ route BudgetList.resource 
     --/ route Status.resource
-  -/ route ExpenseList.resource 
+  -/ route ExpenseList.resource
     --/ route ExpenseItem.resource
   -/ route Expenses.resource
