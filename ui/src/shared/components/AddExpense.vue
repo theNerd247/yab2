@@ -64,7 +64,7 @@ export default {
       httpWithNotify(
         'Created New Expense',
         'Could not create expense',
-        function () { return HTTP.post(query,exp); });
+        HTTP.post(query,exp));
     },
   }
 }

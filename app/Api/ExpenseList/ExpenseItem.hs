@@ -14,6 +14,7 @@ import YabAcid
 import Rest.Dictionary.Types
 import qualified Rest.Resource as R
 import Rest.Types.Info
+import Data.JSON.Schema
 
 type Identifier = BID
 
@@ -29,6 +30,7 @@ resource = mkResourceReader
   , R.create = Just create
   , R.get = Just get
   , R.update = Just update
+  , R.remove = Just remove
   }
 
 get :: Handler WithExpenseItem
@@ -52,3 +54,9 @@ update :: Handler WithExpenseItem
 update = mkInputHandler (jsonI . jsonO) $ \e -> do
   db <- (lift . lift . lift) (asks $ view db)
   updateExpenseItem db e
+
+remove :: Handler WithExpenseItem
+remove = mkIdHandler jsonO $ \_ id -> do
+  db <- (lift . lift . lift) (asks $ view db)
+  e <- (getOne <$> getExpensesByBID db id) !? NotAllowed
+  deleteExpenseItem db e

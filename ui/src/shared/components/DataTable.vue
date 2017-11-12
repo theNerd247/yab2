@@ -1,5 +1,6 @@
 <template>
 	<div>
+		<el-button @click="httpAddItem()">Add</el-button>
 		<el-table :data="tableData.items">
 			<el-table-column label="" fixed>
 				<template slot-scope="scope">
@@ -21,7 +22,8 @@
 </template>
 
 <script>
-	import { HTTP, httpWithNotify } from '@/shared/http-common.js'
+import { HTTP, httpWithNotify } from '@/shared/http-common.js'
+import moment from 'moment'
 
 export default {
 	props: ['url','itemUrl','tdata'],
@@ -88,17 +90,31 @@ export default {
 				'Could not delete item' ,
 				HTTP.delete(q)
 			);
+			this.httpGetData();
 			this.emitChange();
 		},
 		httpAddItem(){
 			let q = this.url + "/" + this.itemUrl;
-			let newItem = httpWithNotify(
+			let newItem = {
+				name: '',
+				amount: 0,
+				reason: '',
+				type: '',
+				id: '',
+				date: {
+					tag: "OneTime",
+					contents: moment().format()
+				}
+			};
+			 
+			httpWithNotify(
 				'Added Item!',
 				'Could not add item',
-				HTTP.put(q)
+				HTTP.post(q,newItem)
 			);
 
 			this.tableData.items.push(newItem);
+			this.httpGetData();
 			this.emitChange();
 		},
 		handleCurrentChange(){

@@ -64,7 +64,7 @@ export default {
       budgetName: this.$route.params.name,
       expensesData: null,
 			url: "expense-list/name/" + this.$route.params.name,
-			itemUrl: "expenses"
+			itemUrl: "expense"
     }
   },
 }
