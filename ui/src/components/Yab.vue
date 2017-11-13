@@ -1,15 +1,28 @@
 <template>
-	<el-row :gutter="20">
-		<el-col :span="24">
-			<el-row>
-				<el-menu theme="dark" :default-active="activeIndex" class="el-menu-demo" mode="horizontal" @select="handleSelect">
-					<el-menu-item index="1">YAB</el-menu-item>
-				</el-menu>
-			</el-row>
+	<el-container>
+		<el-aside>
+			<el-menu mode="vertical" :router="true">
+				<el-menu-item index="/">YAB</el-menu-item>
+				<el-menu-item index="/budget">
+					<i class="el-icon-tickets"></i>
+					<span slot="title">Budget</span>
+				</el-menu-item>
+			</el-menu>
+		</el-aside>
 
-      <el-row>
-        <router-view/>
-      </el-row>
-		</el-col>
-	</el-row>
+			<el-main>
+				<router-view/>
+			</el-main>
+	</el-container>
 </template>
+
+<script>
+	import Vue from 'vue'
+
+export default {
+	data () {
+		return {
+		}
+	}
+}
+</script>

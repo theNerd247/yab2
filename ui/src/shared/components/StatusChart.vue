@@ -26,7 +26,6 @@ export default {
 	created () {
 		HTTP.get("budget-list/status")
 			.then(resp => {
-				console.log(resp);
 				this.statuses = _.map(resp.data.items, x => { 
 					return { 
 						name: x[0],
