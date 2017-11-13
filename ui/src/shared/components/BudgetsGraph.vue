@@ -2,15 +2,25 @@
 <home-card title="Budget Status">
 		<div slot="action">
 			<el-button @click=httpGetStatus()>Update</el-button>
-		</div>>
+		</div>
 	  <div slot="content">
     <el-row>
     <el-form :inline="true">
       <el-form-item label="Start Date">
-        <el-input placeholder="Start Date" v-model="sdate"></el-input>
+        <el-date-picker
+          v-model="sdate"
+          type="date"
+          format="yyyy-MM-dd"
+          placeholder="Date">
+        </el-date-picker>
       </el-form-item>
       <el-form-item label="End Date">
-        <el-input placeholder="End Date" v-model="edate"></el-input>
+        <el-date-picker
+          v-model="edate"
+          type="date"
+          format="yyyy-MM-dd"
+          placeholder="Date">
+        </el-date-picker>
       </el-form-item>
       <el-form-item>
       </el-form-item>
