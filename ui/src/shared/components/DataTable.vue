@@ -50,10 +50,14 @@ export default {
 	},
 	created() {
 		this.httpGetData();
-		httpWithNotify('',"Couldn't get status", HTTP.get(this.url+"/size"),
-			true).then(d => {
-				this.total = Math.ceil(d/this.count);
-			});
+		httpWithNotify(
+			'',
+			"Couldn't get status",
+			HTTP.get(this.url+"/size"),
+			true
+		).then(d => {
+			this.total = Math.ceil(d/this.count);
+		});
 	},
 	methods:{
 		httpGetData(){
@@ -79,9 +83,9 @@ export default {
 				'Updated!',
 				'Could not update',
 				HTTP.put(q, t)
-			);
-
-			this.emitChange();
+			).then(x => {
+				this.emitChange();
+			});
 		},
 		httpUpdateItem(index){
 			let item = this.tableData.items[index];
@@ -91,8 +95,9 @@ export default {
 				'Updated Item',
 				'Could not update item',
 				HTTP.put(q,i)
-			);
-			this.emitChange();
+			).then(x => {
+				this.emitChange();
+			});
 		},
 		httpRemoveItem(index){
 			let item  = this.tableData.items[index];
@@ -101,9 +106,10 @@ export default {
 				'Item deleted',
 				'Could not delete item' ,
 				HTTP.delete(q)
-			);
-			this.httpGetData();
-			this.emitChange();
+			).then(x => {
+				this.httpGetData();
+				this.emitChange();
+			});
 		},
 		httpAddItem(){
 			let q = this.url + "/" + this.itemUrl;
@@ -123,11 +129,10 @@ export default {
 				'Added Item!',
 				'Could not add item',
 				HTTP.post(q,newItem)
-			);
-
-			this.tableData.items.push(newItem);
-			this.httpGetData();
-			this.emitChange();
+			).then(x => {
+				this.httpGetData();
+				this.emitChange();
+			});
 		},
 		handleCurrentChange(){
 			this.offset = (this.curPage-1)*this.count;
