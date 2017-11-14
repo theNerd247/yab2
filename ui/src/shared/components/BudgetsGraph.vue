@@ -39,7 +39,7 @@ import Vue from 'vue'
 import BalancesGraph from './BalancesGraph.vue'
 import HomeCard from './HomeCard.vue'
 import _ from 'lodash'
-import { HTTP, baseURL } from '@/shared/http-common'
+import { HTTP, baseURL, httpWithNotify } from '@/shared/http-common'
 import moment from 'moment'
 
 export default {
@@ -70,26 +70,22 @@ export default {
     httpGetStatus(){
 			let query = "/budget-list/name/"+this.budgetName+"/status/between";
 
-			HTTP.get(query, {
-        params: { 
-          sdate: this.sdate,
-          edate: this.edate
-        }
-      })
-      .then(response => {
-        this.budgetStatus = response.data.items;
+      httpWithNotify(
+        '',
+        "Couldn't get budget data",
+        HTTP.get(query, { params: { 
+            sdate: moment(this.sdate).format("YYYY-MM-DD"),
+            edate: moment(this.edate).format("YYYY-MM-DD")
+        }}),
+        true
+      )
+      .then(d => {
+        this.budgetStatus = d.items;
         this.makeBudgetData();
       })
-      .catch(e => {
-        this.$notify.error({
-          title: 'Error',
-          message: 'Could not get budget data at: ' + query,
-          duration: 0
-        })
-      });
 		},
 		makeBudgetData () {
-			let ds = _.map(this.budgetStatus, x => moment.utc(x[0]).format("YYYY-MM-DD"));
+			let ds = _.map(this.budgetStatus, x => moment(x[0]).format("YYYY-MM-DD"));
 			let bs = _.map(this.budgetStatus, x => x[1]);
 			let es = _.map(this.budgetStatus, x => x[2]);
 
