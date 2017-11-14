@@ -16,16 +16,6 @@
 					placeholder="Budget Start Day">
 				</el-date-picker>
 			</el-form-item>
-			<el-form-item>
-				<el-button @click="addItem()"><i class="el-icon-plus"></i> Add Item</el-button>
-			</el-form-item>
-			<el-form-item v-for="(item, index) in newBudget.items" :key="index">
-				<el-input v-model="item.type" placeholder="Item Type">
-					<el-button slot="prepend" @click="removeItem(index)"><i class="el-icon-circle-cross"></i></el-button>
-				</el-input>
-				<el-input v-model.number="item.amount" type="number" placeholder="Item Amount"></el-input>
-				<el-input v-model.number="item.rate" type="number" placeholder="Item Rate"></el-input>
-			</el-form-item>
 		</el-form>
 	</home-card>
 </template>
@@ -68,18 +58,6 @@ export default {
 				HTTP.post('budget-list', this.newBudget)
 			);
 		},
-		removeItem(index) {
-			this.newBudget.items.splice(index,1);
-		},
-		addItem(){
-			this.newBudget.items.push( {
-				id: 0,
-				type: '',
-				amount: null,
-				rate: {tag: "Periodic", contents: 0},
-				name: ''
-			});
-		}
 	}
 }
 </script>

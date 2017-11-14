@@ -18,7 +18,7 @@ function httpWithNotify(title, eMsg, f, noSuccNotify)
       {
         Notification.success({
           title: title,
-          duration: 3500
+          duration: 1500
         });
       }
 

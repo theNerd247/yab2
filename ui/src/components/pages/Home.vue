@@ -27,9 +27,6 @@
         <el-row>
           <status-chart></status-chart>
         </el-row>
-        <el-row>
-          <recent-expenses></recent-expenses>
-        </el-row>
       </el-col>
     </el-row>
   </el-col>
@@ -51,7 +48,6 @@ export default {
     StatusChart,
     UploadTransaction,
     AddExpense,
-    RecentExpenses,
     NewBudget
   },
   data () {

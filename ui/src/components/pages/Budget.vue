@@ -19,6 +19,9 @@
 				<el-row>
 					<h2>Start Info</h2>
 					<el-form :inline="true" v-if="budgetData != null">
+						<el-form-item>
+							<el-button @click="httpUpdateBudget">Update Budget</el-button>
+						</el-form-item>
 						<el-form-item label="Start Amount">
 							<el-input v-model.number="budgetData.startInfo.startAmount" type="number" placeholder="Amount"></el-input>
 						</el-form-item>
@@ -35,7 +38,6 @@
 
 				<el-row>
 					<h2>Budget Items</h2>
-					<el-button @click="httpUpdateBudget">Update Budget</el-button>
 					<DataTable :url="url" :itemUrl="itemUrl" :tdata.sync="budgetData">
 						<el-table-column label="Type">
 							<template slot-scope="scope">
