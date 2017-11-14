@@ -3,7 +3,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Api.BudgetList (resource, WithBudget) where
+module Api.BudgetList (resource, WithBudgetList) where
 
 import Api.ApiTypes
 import Control.Error.Util ((??),(!?))
@@ -26,13 +26,11 @@ import YabAcid
 import qualified Data.Text as T
 import qualified Rest.Resource as R
 
-type WithBudget = ReaderT Name YabApi
-
-type WithBudgetList a = ReaderT a WithBudget
+type WithBudgetList = ReaderT Name YabApi
 
 data MID = All | AllNames | AllStatus | GetAudit
 
-resource :: Resource YabApi WithBudget Name MID Void
+resource :: Resource YabApi WithBudgetList Name MID Void
 resource = mkResourceReader
   { R.name = "budget-list"
   , R.schema = withListing All $ named [ ("name", singleBy id), ("names", listing AllNames), ("status", listing AllStatus), ("audit", listing GetAudit)] 
@@ -40,16 +38,23 @@ resource = mkResourceReader
   , R.get = Just get
   , R.create = Just create
   , R.update = Just update
+  , R.selects = [("size", getSize)]
   }
 
-get :: Handler WithBudget
+get :: Handler WithBudgetList
 get = mkIdHandler jsonO handler
   where
-    handler :: () -> Name -> ExceptT Reason_ WithBudget BudgetList
+    handler :: () -> Name -> ExceptT Reason_ WithBudgetList BudgetList
     handler _ name = do 
       db <- (lift . lift) (asks $ view db)
       bdb <- (asYabList db name $ getBudgetByName db name) !? NotAllowed
       return bdb 
+
+getSize :: Handler WithBudgetList
+getSize = mkIdHandler jsonO $ \_ name -> do
+  db <- (lift . lift) (asks $ view db)
+  bl <- getBudgetByName db name
+  return $ size bl
 
 list :: MID -> ListHandler YabApi
 list All = listAll
@@ -102,10 +107,10 @@ create = mkInputHandler (jsonI . jsonO) handler
           insertBudgetList db newList'
           return newList'
           
-update :: Handler WithBudget
+update :: Handler WithBudgetList
 update = mkInputHandler (jsonI . jsonO) handler
   where
-    handler :: BudgetList -> ExceptT Reason_ WithBudget ()
+    handler :: BudgetList -> ExceptT Reason_ WithBudgetList ()
     handler bdata = do
       db <- (lift . lift) (asks $ view db)
       updateBudgetList db bdata

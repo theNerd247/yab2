@@ -14,10 +14,11 @@
 			<el-col :span="12">
 				<budgets-graph :budget-name="budgetName"></budgets-graph>
 			</el-col>
+
 			<el-col :span="12">
 				<el-row>
 					<h2>Start Info</h2>
-					<el-form :inline="true">
+					<el-form :inline="true" v-if="budgetData != null">
 						<el-form-item label="Start Amount">
 							<el-input v-model.number="budgetData.startInfo.startAmount" type="number" placeholder="Amount"></el-input>
 						</el-form-item>
@@ -34,30 +35,24 @@
 
 				<el-row>
 					<h2>Budget Items</h2>
-					<el-button @click=httpUpdateBudget()>Update Budget</el-button>
-					<el-button @click="addBudgetItem()">Add Item</el-button>
-
-					<el-table :data="budgetData.items" :default-sort="{prop: 'id'}" row-key="id">
+					<DataTable :url="url" :itemUrl="itemUrl" :tdata.sync="budgetData">
 						<el-table-column label="Type">
 							<template slot-scope="scope">
-								<el-input v-model="scope.row.type" placeholder="Item Type">
-									<el-button slot="prepend" @click="removeBudgetItem(scope.$index)">Delete</el-button>
-								</el-input>
-							</template>
-						</el-table-column>
+								<el-input v-model="scope.row.type" placeholder="Item Type"></el-input>
+								</template>
+							</el-table-column>
 						<el-table-column label="Amount">
 							<template slot-scope="scope">
 								<el-input v-model.number="scope.row.amount" type="number" placeholder="Item Amount"></el-input>
-							</template>
-						</el-table-column>
+								</template>
+							</el-table-column>
 						<el-table-column label="Rate">
 							<template slot-scope="scope">
 								<rate :rate.sync="scope.row.rate"></rate>
-							</template>
-						</el-table-column>
-					</el-table>
+								</template>
+							</el-table-column>
+						</DataTable>
 				</el-row>
-
 			</el-col>
 		</el-row>
 	</el-row>
@@ -67,6 +62,7 @@
 	import Vue from 'vue'
 import BudgetsGraph from '@/shared/components/BudgetsGraph.vue'
 import Rate from '@/shared/components/Rate.vue'
+import DataTable from '@/shared/components/DataTable.vue'
 import statusJSON from '@/assets/budget-status.json'
 import _ from 'lodash'
 import { HTTP, httpWithNotify } from '@/shared/http-common'
@@ -75,48 +71,16 @@ import moment from 'moment'
 export default {
 	components: {
 		BudgetsGraph,
-		Rate
+		Rate,
+		DataTable
 	},
 	data () {
 		return {
+			url: "budget-list/name/" + this.$route.params.name,
+			itemUrl: "budget",
 			budgetData: null,
 			budgetName: this.$route.params.name,
-			expensesData: null,
 		}
 	},
-	created () {
-		this.httpGetBudget();
-	},
-	methods: {
-		httpGetBudget () {
-			let query = "/budget-list/name/" + this.$route.params.name;
-			this.budgetData = httpWithNotify(
-				'',
-				"Could not get expenses",
-			  HTTP.get(query),
-				true).then(d => this.budgetData = d);
-		},
-		httpUpdateBudget () {
-			let query = "/budget-list/name/" + this.$route.params.name;
-			let t = this.budgetData;
-			httpWithNotify(
-				'Updated Budget',
-				'Could not update budget',
-				HTTP.put(query, t)
-			).then(d => this.budgetData = d);
-		},
-		removeBudgetItem(index) {
-			this.budgetData.items.splice(index,1);
-		},
-		addBudgetItem(){
-			this.budgetData.items.push( {
-				id: "",
-				type: '',
-				amount: null,
-				rate: {tag: "Periodic", contents: 0},
-				name: this.budgetData.startInfo.name
-			});
-		},
-	}
 }
 </script>

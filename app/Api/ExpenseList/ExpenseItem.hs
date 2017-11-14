@@ -1,20 +1,20 @@
 module Api.ExpenseList.ExpenseItem where
 
-import Control.Lens hiding ((??))
+import Api.ApiTypes
 import Api.ExpenseList (WithExpenseList)
 import Control.Error.Util ((??),(!?))
+import Control.Lens hiding ((??))
 import Control.Monad.Reader (MonadReader, ReaderT (..), asks,ask)
 import Control.Monad.Trans (MonadIO, lift, liftIO)
 import Control.Monad.Trans.Except (ExceptT, throwE)
 import Data.Budget
 import Data.IxSet
-import Rest
-import Api.ApiTypes
-import YabAcid
-import Rest.Dictionary.Types
-import qualified Rest.Resource as R
-import Rest.Types.Info
 import Data.JSON.Schema
+import Rest
+import Rest.Dictionary.Types
+import Rest.Types.Info
+import YabAcid
+import qualified Rest.Resource as R
 
 type Identifier = BID
 
@@ -25,7 +25,7 @@ instance Info BID where
 
 resource :: Resource WithExpenseList WithExpenseItem Identifier Void Void
 resource = mkResourceReader
-  { R.name = "expense"
+  { R.name = "Expense"
   , R.schema = noListing $ named [("id",singleBy BID)]
   , R.create = Just create
   , R.get = Just get

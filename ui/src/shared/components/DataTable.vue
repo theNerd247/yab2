@@ -122,6 +122,10 @@ export default {
 				date: {
 					tag: "OneTime",
 					contents: moment().format()
+				},
+				rate: {
+					tag: "OneTime",
+					contents: moment().format()
 				}
 			};
 

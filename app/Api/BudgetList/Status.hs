@@ -4,7 +4,7 @@
 module Api.BudgetList.Status (resource) where
 
 import Api.ApiTypes
-import Api.BudgetList (WithBudget)
+import Api.BudgetList (WithBudgetList)
 import Api.ByRange
 import Control.Error.Util ((??),(!?))
 import Control.Lens hiding ((??),(!?))
@@ -32,12 +32,12 @@ type SID = Day
 
 data MID = All | ByRange
 
-type WithStatus = ReaderT SID WithBudget
+type WithStatus = ReaderT SID WithBudgetList
 
 instance Info Day where
   describe _ = "day"
 
-resource :: Resource WithBudget WithStatus SID MID Void
+resource :: Resource WithBudgetList WithStatus SID MID Void
 resource = mkResourceReader
   { R.name = "status"
   , R.schema = withListing All $ named [ ("on", singleBy read ), ("between", listing ByRange) ] 
@@ -47,7 +47,7 @@ resource = mkResourceReader
 
 mkParamHandler dict h = mkHandler dict $ \env -> ask >>= h (param env)
 
-list :: MID -> ListHandler WithBudget
+list :: MID -> ListHandler WithBudgetList
 list All = listAll
 list ByRange = listByDayRange
 
@@ -59,7 +59,7 @@ get = mkIdHandler jsonO $ \_ date -> do
   expenses <- (asYabList db name $ getExpensesByName db name) !? NotAllowed
   return $ compareBudgetsOn (dayToRate (budget^.startDate) $ dayToDate date) budget expenses 
 
-listByDayRange :: ListHandler WithBudget
+listByDayRange :: ListHandler WithBudgetList
 listByDayRange = mkCustomListing (dayRangeParam . jsonO) $ \env -> do
   db <- (lift . lift) (ask $ view db)
   name <- (lift) ask
@@ -72,7 +72,7 @@ listByDayRange = mkCustomListing (dayRangeParam . jsonO) $ \env -> do
   let cs = compareBudgetsBetween sp ep  budget expenses
   return $ (DL.sortOn (view _1) cs) & traverse . _1 %~ (periodToDay $ budget^.startDate)
 
-listAll :: ListHandler WithBudget
+listAll :: ListHandler WithBudgetList
 listAll = mkListing jsonO $ \range -> do 
   name <- ask
   db <- (lift . lift) (ask $ view db)
