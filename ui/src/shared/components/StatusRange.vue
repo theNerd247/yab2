@@ -1,17 +1,24 @@
 <template>
-  <div>
-    <span>{{ formatRangeTip(status[0]) }}</span>
-    <el-slider
-      v-model="stat"
-      :format-tooltip="formatRangeTip"
-      range
-      :max="statusMax"
-      :min="statusMin"
-      :step="100"
-      >
-    </el-slider>
-    <span>{{ formatRangeTip(status[1]) }}</span>
-  </div>
+  <el-row>
+      <h3>Status</h3>
+      <el-row style="width: max-content; height: max-content" type="flex">
+        <el-col>
+          <el-progress type="circle" :percentage="stat" :status="getStatus"></el-progress>
+        </el-col>
+        <el-col :span="23">
+          <el-row style="height: 50%">
+            <el-col>
+              Budget: ${{ status[1]/100 }}
+            </el-col>
+          </el-row>
+          <el-row style="height: 50%">
+            <el-col>
+              Current: ${{ status[0]/100 }}
+            </el-col>
+          </el-row>
+        </el-col>
+      </el-row>
+  </el-row>
 </template>
 
 <script>
@@ -19,22 +26,21 @@
 
 export default {
   props: ['status'],
-  data () {
-    return {
-      stat: this.status
-    }
-  },
   computed: {
-    statusMax () {
-      return Math.max(this.stat[0], this.stat[1])+10000;
+    stat () {
+      try{
+        return Math.floor((this.status[1] - this.status[0])/this.status[1]*100);
+      }
+      catch(e)
+      {
+        return 0;
+      }
     },
-    statusMin () {
-      return Math.min(this.stat[0], this.stat[1])-10000;
-    },
-  },
-  methods: {
-    formatRangeTip (x) {
-      return "$ " + x/100;
+    getStatus () {
+      if(this.stat >= 0)
+        return "";
+      else
+        return "exception";
     },
   }
 }
