@@ -108,9 +108,7 @@ create = mkInputHandler (jsonI . jsonO) handler
           return newList'
           
 update :: Handler WithBudgetList
-update = mkInputHandler (jsonI . jsonO) handler
-  where
-    handler :: BudgetList -> ExceptT Reason_ WithBudgetList ()
-    handler bdata = do
-      db <- (lift . lift) (asks $ view db)
-      updateBudgetList db bdata
+update = mkInputHandler (jsonI . jsonO) $ \bdata -> do
+  db <- (lift . lift) (asks $ view db)
+  updateBudgetList db bdata
+  asYabList db (bdata^.name) $ getBudgetByName db (bdata^.name)

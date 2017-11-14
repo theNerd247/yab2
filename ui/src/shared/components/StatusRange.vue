@@ -1,23 +1,39 @@
+<style>
+
+  .lowBudget .el-slider__button {
+    border-color: #FA5555 !important;
+  }
+  
+  .lowBudget .el-slider__bar {
+    background-color: #FA5555 !important;
+  }
+
+  .highBudget .el-slider__button {
+    border-color: #67C23A !important;
+  }
+  
+  .highBudget .el-slider__bar {
+    background-color: #67C23A !important;
+  }
+
+
+</style>
 <template>
   <el-row>
-      <h3>Status</h3>
-      <el-row style="width: max-content; height: max-content" type="flex">
-        <el-col>
-          <el-progress type="circle" :percentage="stat" :status="getStatus"></el-progress>
+    <h3>Status</h3>
+    <el-row>
+      <el-col>
+        <el-slider disabled :class="{lowBudget: isLow, highBudget: !isLow}" v-model="stat" :max="statMax" :min="statMin" range :format-tooltip="format"></el-slider>
+      </el-col>
+      <el-row>
+        <el-col :span="12">
+          Budget: ${{ status[0] }}
         </el-col>
-        <el-col :span="23">
-          <el-row style="height: 50%">
-            <el-col>
-              Budget: ${{ status[1]/100 }}
-            </el-col>
-          </el-row>
-          <el-row style="height: 50%">
-            <el-col>
-              Current: ${{ status[0]/100 }}
-            </el-col>
-          </el-row>
+        <el-col :span="12">
+          Current: ${{ status[1] }}
         </el-col>
       </el-row>
+    </el-row>
   </el-row>
 </template>
 
@@ -28,20 +44,30 @@ export default {
   props: ['status'],
   computed: {
     stat () {
-      try{
-        return Math.floor((this.status[1] - this.status[0])/this.status[1]*100);
-      }
-      catch(e)
-      {
-        return 0;
-      }
+      return this.status.map(x => x*100);
+    },
+    isLow () {
+      return this.status[1] < this.status[0];
+    },
+    statMax () {
+      return Math.max(this.status[0], this.status[1])*100+5000;
+    },
+    statMin () {
+      return Math.min(this.status[0], this.status[1])*100-5000;
     },
     getStatus () {
-      if(this.stat >= 0)
+      if(this.stat >= 100)
+        return "success";
+      else if(this.stat > 0)
         return "";
       else
         return "exception";
     },
+  },
+  methods: {
+    format(x) {
+      return "$"+x/100;
+    }
   }
 }
 </script>

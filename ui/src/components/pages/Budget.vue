@@ -148,7 +148,7 @@ export default {
 				HTTP.get(this.burl+"/status/on/"+moment().format("YYYY-MM-DD")),
 				true
 			).then(d => {
-				this.status = d.map(x => x*100)
+				this.status = d
 			});
 		},
 		httpUpdateBudget(){
@@ -156,7 +156,9 @@ export default {
 				'Updated Budget',
 				"Could not update budget",
 				HTTP.put(this.burl, this.budgetData)
-			);
+			).then(d =>{
+				this.budgetData = d;
+			});
 		}
 	}
 }

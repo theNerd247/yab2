@@ -80,9 +80,7 @@ create = mkInputHandler (jsonI . jsonO) handler
           return newList'
           
 update :: Handler WithExpenseList
-update = mkInputHandler (jsonI . jsonO) handler
-  where
-    handler :: ExpenseList -> ExceptT Reason_ WithExpenseList ()
-    handler bdata = do
-      db <- (lift . lift) (asks $ view db)
-      updateExpenseList db bdata
+update = mkInputHandler (jsonI . jsonO) $ \bdata -> do
+  db <- (lift . lift) (asks $ view db)
+  updateExpenseList db bdata
+  asYabList db (bdata^.name) $ getExpensesByName db (bdata^.name)

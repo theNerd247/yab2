@@ -79,6 +79,5 @@ listAll = mkListing jsonO $ \range -> do
   budget <- (asYabList db name $ getBudgetByName db name) !? NotAllowed
   expenses <- (asYabList db name $ getExpensesByName db name) !? NotAllowed
   let cs = compareBudgetsBetween (offset range) ((offset range) + (count range)) budget expenses
-  liftIO . putStrLn $ show cs
   return $ (DL.sortOn (view _1) cs) & traverse . _1 %~ (periodToDay $ budget^.startDate)
 
