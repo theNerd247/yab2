@@ -19,7 +19,6 @@
 </style>
 <template>
   <el-row>
-    <h3>Status</h3>
     <el-row>
       <el-col :span="8">
         Budget: ${{ status[0] }}

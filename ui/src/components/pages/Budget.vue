@@ -3,7 +3,7 @@
 
 		<el-row>
 			<el-col :span="12">
-				<h1>{{ budgetName }}</h1>
+				<h1>Budget: {{ budgetName }}</h1>
 			</el-col>
 		</el-row>
 
@@ -14,6 +14,7 @@
 			<el-col :span="12">
 				<el-row>
 					<el-row>
+						<h2>Status</h2>
 						<StatusRange :status="status"></StatusRange>
 					</el-row>
 					<h2>Start Info</h2>
