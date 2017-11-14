@@ -20,12 +20,8 @@
 export default {
   props: ['status'],
   data () {
-    let x = this.status[0];
-    let y = this.status[1];
     return {
-      stat: [x,y],
-      x,
-      y
+      stat: this.status
     }
   },
   computed: {
