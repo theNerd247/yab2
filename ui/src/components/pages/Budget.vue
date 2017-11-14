@@ -5,15 +5,7 @@
 				<h1>{{ budgetName }}</h1>
 			</el-col>
 			<el-col :span="5">
-				<el-slider
-					v-model="status"
-					:format-tooltip="formatRangeTip"
-					range
-					:max="statusMax"
-					:min="statusMin"
-					step="100"
-					>
-				</el-slider>
+				<StatusRange :status="status"></StatusRange>
 			</el-col>
 		</el-row>
 
@@ -63,6 +55,7 @@
 									</el-table-column>
 								</DataTable>
 							</el-row>
+
 							<el-row>
 								<h2>Expenses</h2>
 								<DataTable :url="eurl" :itemUrl="eitemUrl" :tdata.sync="expensesData">
@@ -110,6 +103,7 @@ import BudgetsGraph from '@/shared/components/BudgetsGraph.vue'
 import Rate from '@/shared/components/Rate.vue'
 import DataTable from '@/shared/components/DataTable.vue'
 import statusJSON from '@/assets/budget-status.json'
+import StatusRange from '@/shared/components/StatusRange.vue'
 import _ from 'lodash'
 import { HTTP, httpWithNotify } from '@/shared/http-common'
 import moment from 'moment'
@@ -118,7 +112,8 @@ export default {
 	components: {
 		BudgetsGraph,
 		Rate,
-		DataTable
+		DataTable,
+		StatusRange
 	},
 	data () {
 		return {
@@ -129,7 +124,7 @@ export default {
 			expensesData: {items: [], startInfo: {startAmount: 0, startDate: ""}},
 			eurl: "expense-list/name/" + this.$route.params.name,
 			eitemUrl: "expense",
-			status: ["",0,0]
+			status: [0,0]
 		}
 	},
 	created () {
@@ -142,18 +137,7 @@ export default {
 			this.status = d.map(x => x*100)
 		);
 	},
-	computed: {
-		statusMax () {
-			return Math.max(this.status[0], this.status[1])+10000;
-		},
-		statusMin () {
-			return Math.min(this.status[0], this.status[1])-10000;
-		},
-	},
 	methods: {
-		formatRangeTip (x) {
-			return "$ " + x/100;
-		},
 		httpUpdateBudget(){
 			httpWithNotify(
 				'Updated Budget',
