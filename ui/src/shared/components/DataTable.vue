@@ -1,28 +1,40 @@
 <template>
 	<div>
-		<el-button @click="httpAddItem()">Add</el-button>
-		<el-table :data="tableData.items">
-			<el-table-column label="" fixed>
-				<template slot-scope="scope">
-					<el-button @click="httpUpdateItem(scope.$index)">Update</el-button>
-					<el-button @click="httpRemoveItem(scope.$index)">Delete</el-button>
-				</template>
-			</el-table-column>
-			<slot></slot>
-		</el-table>
-		<el-pagination
-			@current-change="handleCurrentChange"
-			:current-page.sync="curPage"
-			:page-size="count"
-			layout="total, prev, pager, next, jumper"
-			:page-count="total"
-			>
-		</el-pagination>
+		<el-row>
+			<el-col :span="24">
+				<el-button @click="httpAddItem()">Add</el-button>
+			</el-col>
+		</el-row>
+		<el-row>
+			<el-col :span="24">
+				<el-table :data="tableData.items">
+					<el-table-column label="" fixed>
+						<template slot-scope="scope">
+							<el-button @click="httpUpdateItem(scope.$index)">Update</el-button>
+							<el-button @click="httpRemoveItem(scope.$index)">Delete</el-button>
+						</template>
+					</el-table-column>
+					<slot></slot>
+				</el-table>
+			</el-col>
+		</el-row>
+		<el-row>
+			<el-col :span="8" :offset="8">
+				<el-pagination
+					@current-change="handleCurrentChange"
+					:current-page.sync="curPage"
+					:page-size="count"
+					layout="total, prev, pager, next, jumper"
+					:page-count="total"
+					>
+				</el-pagination>
+			</el-col>
+		</el-row>
 	</div>
 </template>
 
 <script>
-import { HTTP, httpWithNotify } from '@/shared/http-common.js'
+	import { HTTP, httpWithNotify } from '@/shared/http-common.js'
 import moment from 'moment'
 
 export default {
@@ -106,7 +118,7 @@ export default {
 					contents: moment().format()
 				}
 			};
-			 
+
 			httpWithNotify(
 				'Added Item!',
 				'Could not add item',

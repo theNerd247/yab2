@@ -38,13 +38,13 @@ data Transaction = Transaction
   { _tDate :: Day
   , _tNo :: String
   , _tDesc :: String
-  , _tDebit :: Maybe Amount
-  , _tCredit :: Maybe Amount
+  , _tDebit :: Maybe Double
+  , _tCredit :: Maybe Double
   } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 data Bank = Bank
-  { _checking :: Amount
-  , _savings :: Amount
+  { _checking :: Double
+  , _savings :: Double
   } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 makeClassy ''Bank
@@ -86,6 +86,6 @@ toExpense bName t = do
       _ -> AmountType ""
     & amount .~ (c - d)
   where
-    d = t^.tDebit . to num
-    c = t^.tCredit . to num
+    d = t^.tDebit . to num . to doubleToAmount
+    c = t^.tCredit . to num . to doubleToAmount
     num = maybe 0 id

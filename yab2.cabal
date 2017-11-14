@@ -35,6 +35,7 @@ executable yab2
                      , snap
                      , errors
                      , json-schema
+                     , Decimal
                      , snap-core
                      , data-default
                      , web-routes

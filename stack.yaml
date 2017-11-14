@@ -45,6 +45,10 @@ packages:
     - rest-snap
     - rest-types
   extra-dep: true
+- location:
+    git: git@github.com:theNerd247/Haskell-Decimal
+    commit: 99b8bf27a57a4cd9e1ba561d88261036e1386b6d 
+  extra-dep: true
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:

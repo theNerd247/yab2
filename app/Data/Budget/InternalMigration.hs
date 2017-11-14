@@ -11,3 +11,5 @@ import GHC.Generics
 import Data.BIDMigration
 
 type Rate_v0 = Int
+
+type Amount_v0 = Double

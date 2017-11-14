@@ -2,7 +2,7 @@
   <el-row>
     <el-row>
       <el-col :span="22">
-        <h1>Budget: {{ budgetName }}</h1>
+        <h1>{{ budgetName }}</h1>
       </el-col>
 
       <el-col :span="2">
@@ -10,7 +10,6 @@
       </el-col>
     </el-row>
     <el-row>
-      <h2>Expenses</h2>
       <DataTable :url="url" :itemUrl="itemUrl" :tdata.sync="expensesData">
         <el-table-column label="Date">
           <template slot-scope="scope">

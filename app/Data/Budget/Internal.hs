@@ -21,7 +21,9 @@ import Data.Acid
 import Data.Aeson hiding ((.~))
 import Data.Audit
 import Data.BID
+import Data.Budget.InternalMigration
 import Data.Data
+import Data.Decimal
 import Data.Default
 import Data.Default.Time
 import Data.IxSet
@@ -29,12 +31,17 @@ import Data.JSON.Schema hiding (Proxy, Object)
 import Data.Monoid
 import Data.SafeCopy
 import Data.Time
-import Data.Budget.InternalMigration
 import GHC.Generics hiding (to)
 import qualified Data.List as DL
 import qualified Data.Text as DT
 
-type Amount = Double
+type Amount = Decimal
+
+amountToDouble :: Amount -> Double
+amountToDouble (Decimal p m) = (fromInteger m) / (fromInteger $ 10 ^ p)
+
+doubleToAmount :: Double -> Amount
+doubleToAmount = realFracToDecimal 2
 
 type Period = Int
 
@@ -79,6 +86,18 @@ instance Migrate Rate where
   type MigrateFrom Rate = Rate_v0
   migrate = Periodic
 
+instance Migrate Amount where
+  type MigrateFrom Amount = Amount_v0
+  migrate = doubleToAmount
+
+instance SafeCopy Amount where
+    putCopy a = contain $ do
+      safePut $ decimalPlaces a
+      safePut $ decimalMantissa a
+    getCopy = contain $ Decimal <$> safeGet <*> safeGet
+    version = 2
+    kind = extension
+
 $(deriveSafeCopy 1 'extension ''Rate)
 
 $(deriveSafeCopy 0 'base ''AmountType)
@@ -107,6 +126,9 @@ class HasYabList m a | m -> a where
 instance Default Rate where
   def = Periodic 0
 
+instance Default Amount where
+  def = 0
+
 instance Default BudgetAmount
 
 instance Default AmountType
@@ -114,6 +136,9 @@ instance Default AmountType
 instance Default StartInfo
 
 instance (Default a) => Default (YabList a) 
+
+instance FromJSON Amount where
+  parseJSON = fmap doubleToAmount . parseJSON
 
 instance FromJSON AmountType where
   parseJSON = fmap AmountType . parseJSON
@@ -169,6 +194,9 @@ instance HasYabList (YabList a) a where
 instance HasStartInfo (YabList a) where
   startInfo = yabListStartInfo
 
+instance JSONSchema Amount where
+  schema _ = Data.JSON.Schema.Number $ Bound Nothing Nothing
+
 instance JSONSchema AmountType where
   schema = gSchema
 
@@ -186,6 +214,9 @@ instance (JSONSchema a) => JSONSchema (YabList a) where
 
 instance (ToJSON a, Indexable a, Ord a, Typeable a) => ToJSON (YabDB a) where
   toJSON = toJSON . toList
+
+instance ToJSON Amount where
+  toJSON = toJSON . amountToDouble 
 
 instance Indexable StartInfo where
   empty = ixSet 
