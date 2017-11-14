@@ -1,31 +1,31 @@
-module Api.ExpenseList.ExpenseItem where
+module Api.BudgetList.BudgetItem where
 
-import Api.ApiTypes
-import Api.ExpenseList (WithExpenseList)
-import Control.Error.Util ((??),(!?))
 import Control.Lens hiding ((??))
+import Api.BudgetList (WithBudgetList)
+import Control.Error.Util ((??),(!?))
 import Control.Monad.Reader (MonadReader, ReaderT (..), asks,ask)
 import Control.Monad.Trans (MonadIO, lift, liftIO)
 import Control.Monad.Trans.Except (ExceptT, throwE)
 import Data.Budget
 import Data.IxSet
-import Data.JSON.Schema
 import Rest
-import Rest.Dictionary.Types
-import Rest.Types.Info
+import Api.ApiTypes
 import YabAcid
+import Rest.Dictionary.Types
 import qualified Rest.Resource as R
+import Rest.Types.Info
+import Data.JSON.Schema
 
 type Identifier = BID
 
-type WithExpenseItem = ReaderT Identifier WithExpenseList
+type WithBudgetItem = ReaderT Identifier WithBudgetList
 
 instance Info BID where
   describe _ = "bid"
 
-resource :: Resource WithExpenseList WithExpenseItem Identifier Void Void
+resource :: Resource WithBudgetList WithBudgetItem Identifier Void Void
 resource = mkResourceReader
-  { R.name = "expense"
+  { R.name = "budget"
   , R.schema = noListing $ named [("id",singleBy BID)]
   , R.create = Just create
   , R.get = Just get
@@ -33,30 +33,30 @@ resource = mkResourceReader
   , R.remove = Just remove
   }
 
-get :: Handler WithExpenseItem
+get :: Handler WithBudgetItem
 get = mkIdHandler jsonO $ \_ id -> do
   db <- (lift . lift . lift) (asks $ view db)
   nm <- (lift . lift) ask
-  getOne <$> getExpensesByBID db id
+  getOne <$> getBudgetByBID db id
 
-create :: Handler WithExpenseList
+create :: Handler WithBudgetList
 create = mkInputHandler (jsonI . jsonO) handler
   where
-    handler :: ExpenseItem -> ExceptT Reason_ WithExpenseList ExpenseItem
+    handler :: BudgetItem -> ExceptT Reason_ WithBudgetList BudgetItem
     handler newItem = do
       db <- (lift . lift) (asks $ view db)
       nm <- lift ask
       newItem' <- liftIO $ setNewBID newItem
-      insertExpenseItem db $ newItem' & name .~ nm
+      insertBudgetItem db $ newItem' & name .~ nm
       return $ newItem'
 
-update :: Handler WithExpenseItem
+update :: Handler WithBudgetItem
 update = mkInputHandler (jsonI . jsonO) $ \e -> do
   db <- (lift . lift . lift) (asks $ view db)
-  updateExpenseItem db e
+  updateBudgetItem db e
 
-remove :: Handler WithExpenseItem
+remove :: Handler WithBudgetItem
 remove = mkIdHandler jsonO $ \_ id -> do
   db <- (lift . lift . lift) (asks $ view db)
-  e <- (getOne <$> getExpensesByBID db id) !? NotAllowed
-  deleteExpenseItem db e
+  e <- (getOne <$> getBudgetByBID db id) !? NotAllowed
+  deleteBudgetItem db e

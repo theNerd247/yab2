@@ -35,6 +35,7 @@
 
 				<el-row>
 					<h2>Budget Items</h2>
+					<el-button @click="httpUpdateBudget">Update Budget</el-button>
 					<DataTable :url="url" :itemUrl="itemUrl" :tdata.sync="budgetData">
 						<el-table-column label="Type">
 							<template slot-scope="scope">
@@ -82,5 +83,14 @@ export default {
 			budgetName: this.$route.params.name,
 		}
 	},
+	methods: {
+		httpUpdateBudget(){
+			httpWithNotify(
+				'Updated Budget', 
+				"Could not update budget", 
+				HTTP.put(this.url, this.budgetData)
+			);
+		}
+	}
 }
 </script>
