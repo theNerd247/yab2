@@ -8,10 +8,14 @@
 		<el-row>
 			<el-col :span="24">
 				<el-table :data="tableData.items">
-					<el-table-column label="" fixed>
+					<el-table-column label="" fixed width="75">
 						<template slot-scope="scope">
-							<el-button @click="httpUpdateItem(scope.$index)">Update</el-button>
-							<el-button @click="httpRemoveItem(scope.$index)">Delete</el-button>
+								<el-button type="text" @click="httpUpdateItem(scope.$index)">
+									<i class="el-icon-success"></i>
+								</el-button>
+								<el-button type="text" @click="httpRemoveItem(scope.$index)">
+									<i class="el-icon-error"></i>
+								</el-button>
 						</template>
 					</el-table-column>
 					<slot></slot>

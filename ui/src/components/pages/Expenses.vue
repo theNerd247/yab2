@@ -8,7 +8,7 @@
       <el-col :span="2">
         <router-link tag="el-button" :to="{name: 'Budget', params: {name: this.$route.params.name}}">Go To Budget</router-link>
       </el-col>
-    </el-row>
+		</el-row>
     <el-row>
       <DataTable :url="url" :itemUrl="itemUrl" :tdata.sync="expensesData">
         <el-table-column label="Date">

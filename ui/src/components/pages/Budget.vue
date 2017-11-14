@@ -1,12 +1,19 @@
 <template>
 	<el-row>
 		<el-row>
-			<el-col :span="22">
-				<h1>Budget: {{ budgetName }}</h1>
+			<el-col :span="12">
+				<h1>{{ budgetName }}</h1>
 			</el-col>
-
-			<el-col :span="2">
-				<router-link tag="el-button" :to="{name: 'Expenses', params: {name: this.$route.params.name}}">Go To Expenses</router-link>
+			<el-col :span="5">
+				<el-slider
+					v-model="status"
+					:format-tooltip="formatRangeTip"
+					range
+					:max="statusMax"
+					:min="statusMin"
+					step="100"
+					>
+				</el-slider>
 			</el-col>
 		</el-row>
 
@@ -23,46 +30,82 @@
 							<el-button @click="httpUpdateBudget">Update Budget</el-button>
 						</el-form-item>
 						<el-form-item label="Start Amount">
-							<el-input v-model.number="budgetData.startInfo.startAmount" type="number" placeholder="Amount"></el-input>
-						</el-form-item>
-						<el-form-item label="Start Date">
-							<el-date-picker
-								v-model="budgetData.startInfo.startDate"
-								type="date"
-								format="yyyy-MM-dd"
-								placeholder="Budget Start Day">
-							</el-date-picker>
-						</el-form-item>
-					</el-form>
-				</el-row>
+							<el-input size="small" v-model.number="budgetData.startInfo.startAmount" type="number" placeholder="Amount"></el-input size="small">
+							</el-form-item>
+							<el-form-item label="Start Date">
+								<el-date-picker
+									size="small"
+									v-model="budgetData.startInfo.startDate"
+									type="date"
+									format="yyyy-MM-dd"
+									placeholder="Budget Start Day">
+								</el-date-picker>
+							</el-form-item>
+						</el-form>
+					</el-row>
 
-				<el-row>
-					<h2>Budget Items</h2>
-					<DataTable :url="url" :itemUrl="itemUrl" :tdata.sync="budgetData">
-						<el-table-column label="Type">
-							<template slot-scope="scope">
-								<el-input v-model="scope.row.type" placeholder="Item Type"></el-input>
-								</template>
-							</el-table-column>
-						<el-table-column label="Amount">
-							<template slot-scope="scope">
-								<el-input v-model.number="scope.row.amount" type="number" placeholder="Item Amount"></el-input>
-								</template>
-							</el-table-column>
-						<el-table-column label="Rate">
-							<template slot-scope="scope">
-								<rate :rate.sync="scope.row.rate"></rate>
-								</template>
-							</el-table-column>
-						</DataTable>
-				</el-row>
-			</el-col>
-		</el-row>
-	</el-row>
-</template>
+					<el-row>
+						<h2>Budget Items</h2>
+						<DataTable :url="burl" :itemUrl="bitemUrl" :tdata.sync="budgetData">
+							<el-table-column label="Type"> <template slot-scope="scope">
+									<el-input size="small" v-model="scope.row.type" placeholder="Item Type"></el-input size="small">
+									</template>
+								</el-table-column>
+								<el-table-column label="Amount">
+									<template slot-scope="scope">
+										<el-input size="small" v-model.number="scope.row.amount" type="number" placeholder="Item Amount"></el-input size="small">
+										</template>
+									</el-table-column>
+									<el-table-column label="Rate">
+										<template slot-scope="scope">
+											<rate :rate.sync="scope.row.rate"></rate>
+										</template>
+									</el-table-column>
+								</DataTable>
+							</el-row>
+							<el-row>
+								<h2>Expenses</h2>
+								<DataTable :url="eurl" :itemUrl="eitemUrl" :tdata.sync="expensesData">
+									<el-table-column label="Date">
+										<template slot-scope="scope">
+											<el-date-picker
+												size="small"
+												v-model="scope.row.date.contents"
+												type="date"
+												format="yyyy-MM-dd"
+												placeholder="Date">
+											</el-date-picker>
+										</template>
+									</el-table-column>
+									<el-table-column label="Budget">
+										<template slot-scope="scope">
+											<el-input size="small" v-model="scope.row.name" placeholder="Budget Name"></el-input size="small">
+											</template>
+										</el-table-column>
+										<el-table-column label="Type">
+											<template slot-scope="scope">
+												<el-input size="small" v-model="scope.row.type" placeholder="Item Type"></el-input size="small">
+												</template>
+											</el-table-column>
+											<el-table-column label="Amount">
+												<template slot-scope="scope">
+													<el-input size="small" v-model.number="scope.row.amount" type="number" placeholder="Item Amount"></el-input size="small">
+													</template>
+												</el-table-column>
+												<el-table-column label="Reason">
+													<template slot-scope="scope">
+														<el-input size="small" v-model="scope.row.reason" placeholder="Reason"></el-input size="small">
+														</template>
+													</el-table-column>
+												</DataTable>
+											</el-row>
+										</el-col>
+									</el-row>
+								</el-row>
+							</template>
 
-<script>
-	import Vue from 'vue'
+							<script>
+								import Vue from 'vue'
 import BudgetsGraph from '@/shared/components/BudgetsGraph.vue'
 import Rate from '@/shared/components/Rate.vue'
 import DataTable from '@/shared/components/DataTable.vue'
@@ -79,18 +122,43 @@ export default {
 	},
 	data () {
 		return {
-			url: "budget-list/name/" + this.$route.params.name,
-			itemUrl: "budget",
-			budgetData: null,
+			burl: "budget-list/name/" + this.$route.params.name,
+			bitemUrl: "budget",
+			budgetData: {items: [], startInfo: {startAmount: 0, startDate: ""}},
 			budgetName: this.$route.params.name,
+			expensesData: {items: [], startInfo: {startAmount: 0, startDate: ""}},
+			eurl: "expense-list/name/" + this.$route.params.name,
+			eitemUrl: "expense",
+			status: ["",0,0]
 		}
 	},
+	created () {
+		httpWithNotify(
+			'',
+			'Could not get budget status',
+			HTTP.get(this.burl+"/status/on/"+moment().format("YYYY-MM-DD")),
+			true
+		).then(d =>
+			this.status = d.map(x => x*100)
+		);
+	},
+	computed: {
+		statusMax () {
+			return Math.max(this.status[0], this.status[1])+10000;
+		},
+		statusMin () {
+			return Math.min(this.status[0], this.status[1])-10000;
+		},
+	},
 	methods: {
+		formatRangeTip (x) {
+			return "$ " + x/100;
+		},
 		httpUpdateBudget(){
 			httpWithNotify(
-				'Updated Budget', 
-				"Could not update budget", 
-				HTTP.put(this.url, this.budgetData)
+				'Updated Budget',
+				"Could not update budget",
+				HTTP.put(this.burl, this.budgetData)
 			);
 		}
 	}

@@ -27,7 +27,9 @@ function httpWithNotify(title, eMsg, f, noSuccNotify)
     .catch(e => {
       Notification.error({
         title: 'Error',
-        message: eMsg + ': \n' + JSON.stringify(e.response.data),
+				message: eMsg 
+					+ '\nurl: ' + e.config.url
+					+ '\n' + JSON.stringify(e.response.data),
         duration: 0
       })
     });
