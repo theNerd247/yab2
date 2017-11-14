@@ -27,7 +27,7 @@
       </el-form>
   </el-row>
   <el-row>
-    <balances-graph ref="bgraph" :chart-data="balancesData" :options="options"></balances-graph>
+    <balances-graph ref="bgraph" width="844" :chart-data="balancesData" :options="options"></balances-graph>
   </el-row>
 	</div>
 </home-card>
@@ -55,6 +55,7 @@ export default {
 			balancesData: null,
       budgetStatus: [],
 			options: {
+        responsive: false,
 				elements: {
 					line: {
 						tension: 0
