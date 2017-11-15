@@ -10,7 +10,7 @@
 </style>
 <template>
 	<el-container direction="vertical">
-		<el-header height="max-content">
+		<el-header>
 			<el-row>
 				<el-col :span="12">
 					<h1>Budget: {{ budgetName }}</h1>
@@ -20,7 +20,7 @@
 
 		<el-main>
 			<el-row>
-				<el-col>
+				<el-col :span="24">
 					<h2>Status</h2>
 					<StatusRange :status="status"></StatusRange>
 				</el-col>
@@ -70,12 +70,10 @@
 							</el-row>
 						</el-col>
 					</el-row>
-
 				</el-tab-pane>
 
 				<el-tab-pane name="expenses">
 					<span slot="label"><i class="el-icon-edit-outline"></i> Expenses</span>
-
 					<el-row >
 						<el-col>
 							<h2>Expenses</h2>
@@ -109,6 +107,7 @@
 						</el-col>
 					</el-row>
 				</el-tab-pane>
+				
 				<el-tab-pane label="Status" name="status">
 					<span slot="label"><i class="el-icon-date"></i> History</span>
 					<el-row>
