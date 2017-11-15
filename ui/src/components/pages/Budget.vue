@@ -119,7 +119,6 @@
 
 			</el-tabs>
 		</el-main>
-
 	</el-container>
 </template>
 

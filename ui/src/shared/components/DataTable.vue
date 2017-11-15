@@ -7,7 +7,7 @@
 		</el-row>
 		<el-row>
 			<el-col :span="24">
-				<el-table :data="tableData.items">
+				<el-table :data="tableData.items" row-key="id">
 					<el-table-column label="" fixed width="75">
 						<template slot-scope="scope">
 								<el-button type="text" @click="httpUpdateItem(scope.$index)">
@@ -74,7 +74,7 @@ export default {
 				'',
 				'Could not get expenses',
 				HTTP.get(q, { params }),
-				true
+        true
 			).then(d => {
 				this.tableData = d;
 				this.emitChange();
