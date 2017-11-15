@@ -19,7 +19,7 @@
 </style>
 <template>
   <el-row>
-    <el-row>
+    <el-row type="flex" justify="center">
       <el-col :span="8">
         Budget: ${{ status[0] }}
       </el-col>
