@@ -60,7 +60,19 @@ export default {
 					line: {
 						tension: 0
 					}
-				}
+        },
+        scales: {
+          xAxes: [{
+            type: 'time',
+            time: {
+              ticks: {
+                source: 'auto'
+              },
+              bounds: 'data',
+              unit: 'day'
+            }
+          }]
+        }
 			}
 		}
 	},
@@ -86,12 +98,12 @@ export default {
       })
 		},
 		makeBudgetData () {
-			let ds = _.map(this.budgetStatus, x => moment.utc(x[0]).format("YYYY-MM-DD"));
-			let bs = _.map(this.budgetStatus, x => x[1]);
-			let es = _.map(this.budgetStatus, x => x[2]);
+			let ds = _.map(this.budgetStatus, x => moment.utc(x[0]));
+      let bs = _.map(this.budgetStatus, (x,i) => {return {t: ds[i], y: x[1]}});
+      let es = _.map(this.budgetStatus, (x,i) => {return {t: ds[i], y: x[2]}});
 
 			this.balancesData = {
-				labels: ds,
+        labels: ds,
 				datasets: [
 					{
 						label: 'Budget',
