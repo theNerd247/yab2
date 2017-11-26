@@ -50,12 +50,14 @@ list All     = listAll
 list ByRange = listByDayRange
 
 get :: Handler WithStatus
-get = mkIdHandler jsonO $ \_ date -> do
+get = mkHandler (budgetItemFilterParam . jsonO) $ \env -> do
   name <- (lift . lift) ask
   db <- (lift . lift . lift) (asks $ view db)
+  date <- ask
+  let (BudgetItemFilter itemsFilter) = param env
   budget <- asYabList db name (getBudgetByName db name) !? NotAllowed
   expenses <- asYabList db name (getExpensesByName db name) !? NotAllowed
-  return $ compareBudgetsOn (dayToRate (budget^.startDate) $ dayToDate date) budget expenses
+  return $ compareBudgetsOn (dayToRate (budget^.startDate) $ dayToDate date) (filterBudgetItems budget itemsFilter) (filterBudgetItems expenses itemsFilter)
 
 listByDayRange :: ListHandler WithBudgetList
 listByDayRange = mkCustomListing (dayRangeParam . jsonO) $ \env -> do

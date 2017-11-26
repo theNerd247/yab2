@@ -177,6 +177,9 @@ instance Functor YabList where
 instance HasBID StartInfo where
   bid = startInfoBID
 
+instance HasName Name where
+  name = id
+
 instance HasName StartInfo where
   name = startInfoBName
 
@@ -349,8 +352,14 @@ currentBudgetBal b = do
   n <- getCurrentTime
   return $ getBalanceAtPeriod (dayToPeriod (b^.startDate) n) b
 
-filterBudgetItems :: (HasName s, HasYabList b s) => b -> [s] -> b
-filterBudgetItems b bs = b & items %~ \is -> DL.intersectBy (\a b -> a^.name == b^.name) is bs
+-- | filters a yablist by the given whitelist of items to search for. If the
+-- whitelist is empty the original yablist is returned
+filterBudgetItems :: (HasName s, HasName a, HasYabList b a) => b -> [s] -> b
+filterBudgetItems b [] = b
+filterBudgetItems b bs = b & items %~ DL.filter hasName
+  where
+    ns = view name <$> bs
+    hasName x = x^.name `DL.elem` ns
 
 -- updates each element by the given key using updateIx
 updateDBItems :: (HasYabDB r a, MonadState s m, Ord a, Indexable a, Typeable k, Typeable a) => Lens' s r -> k -> [a] -> m ()
