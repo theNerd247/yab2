@@ -23,7 +23,7 @@ type WithBudgetItem = ReaderT Identifier WithBudgetList
 instance Info BID where
   describe _ = "bid"
 
-resource :: Resource WithBudgetList WithBudgetItem Identifier Void Void
+-- resource :: Resource WithBudgetList WithBudgetItem Identifier Void Void
 resource = mkResourceReader
   { R.name = "budget"
   , R.schema = noListing $ named [("id",singleBy BID)]
@@ -48,7 +48,7 @@ create = mkInputHandler (jsonI . jsonO) handler
       nm <- lift ask
       newItem' <- liftIO $ setNewBID newItem
       insertBudgetItem db $ newItem' & name .~ nm
-      return $ newItem'
+      return newItem'
 
 update :: Handler WithBudgetItem
 update = mkInputHandler (jsonI . jsonO) $ \e -> do

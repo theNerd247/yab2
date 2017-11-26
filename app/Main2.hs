@@ -53,7 +53,7 @@ appInit :: SnapletInit App App
 appInit = makeSnaplet "myapp" "Yab snaplet" Nothing $ do
   dbRef <- liftIO $ openLocalStateFrom "/tmp/tst" (def :: YabAcid)
   onUnload $ closeAcidState dbRef
-  restApi <- nestSnaplet "yab" restSnaplet $ restInit (YabApiData dbRef) (\d -> liftIO . (runYabApi d)) api
+  restApi <- nestSnaplet "yab" restSnaplet $ restInit (YabApiData dbRef) (\d -> liftIO . runYabApi d) api
   addRoutes [("transaction/:name", uploadTransaction)]
   return $ App dbRef restApi
 
@@ -89,7 +89,7 @@ withErr msg = do
 allowVueDev :: Handler b v ()
 allowVueDev = modifyResponse $ setHeader "Access-Control-Allow-Origin" "http://localhost:8080"
 
-asJSON :: (ToJSON a) => a -> Handler b v ()
+asJSON :: (ToJSON a, MonadSnap m) => a -> m ()
 asJSON x = do 
   modifyResponse $ setHeader "Content-Type" "application/json"
   writeLBS . encode $ x
