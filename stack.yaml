@@ -67,6 +67,9 @@ flags: {}
 extra-package-dbs: []
 
 docker:
-  enable: true
+  enable: false
   mount: 
     - "/tmp:/tmp"
+nix:
+  enable: true
+  packages: [zlib]
