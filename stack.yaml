@@ -72,4 +72,9 @@ docker:
     - "/tmp:/tmp"
 nix:
   enable: true
-  packages: [zlib]
+  packages:
+    - zlib
+    - libcxx
+    - icu
+    - gcc
+    - ncurses

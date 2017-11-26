@@ -331,6 +331,11 @@ compareBudgetsOn p b1 b2 = ((getBalanceAtPeriod p b1), (getBalanceAtPeriod p b2)
 getBalances s e b = [s..e]^..traverse . to (\d -> getBalanceAtPeriod d b)
 
 -- prints the balance of the budget at each period from start to end
+
+printBalances
+  :: forall a s.
+     (HasStartInfo s, HasBudgetAmount a, HasRate a, HasYabList s a) =>
+     Int -> Int -> s -> IO ()
 printBalances start end budget = sequence_ $ [start..end]^..traverse . to printBal
   where
     printBal d = putStrLn $ 
@@ -339,9 +344,13 @@ printBalances start end budget = sequence_ $ [start..end]^..traverse . to printB
       ++ (show $ getBalanceAtPeriod d budget)
 
 -- gets the budget balance for the current day (this uses utc time)
+currentBudgetBal :: (HasYabList s a, HasRate a, HasBudgetAmount a, HasStartInfo s) => s -> IO Amount 
 currentBudgetBal b = do 
   n <- getCurrentTime
   return $ getBalanceAtPeriod (dayToPeriod (b^.startDate) n) b
+
+filterBudgetItems :: (HasName s, HasYabList b s) => b -> [s] -> b
+filterBudgetItems b bs = b & items %~ \is -> DL.intersectBy (\a b -> a^.name == b^.name) is bs
 
 -- updates each element by the given key using updateIx
 updateDBItems :: (HasYabDB r a, MonadState s m, Ord a, Indexable a, Typeable k, Typeable a) => Lens' s r -> k -> [a] -> m ()

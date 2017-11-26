@@ -1,20 +1,21 @@
 module Api.BudgetList.BudgetItem where
 
-import Control.Lens hiding ((??))
-import Api.BudgetList (WithBudgetList)
-import Control.Error.Util ((??),(!?))
-import Control.Monad.Reader (MonadReader, ReaderT (..), asks,ask)
-import Control.Monad.Trans (MonadIO, lift, liftIO)
-import Control.Monad.Trans.Except (ExceptT, throwE)
-import Data.Budget
-import Data.IxSet
-import Rest
-import Api.ApiTypes
-import YabAcid
-import Rest.Dictionary.Types
-import qualified Rest.Resource as R
-import Rest.Types.Info
-import Data.JSON.Schema
+import           Api.ApiTypes
+import           Api.BudgetList             (WithBudgetList)
+import           Control.Error.Util         ((!?), (??))
+import           Control.Lens               hiding ((??))
+import           Control.Monad.Reader       (MonadReader, ReaderT (..), ask,
+                                             asks)
+import           Control.Monad.Trans        (MonadIO, lift, liftIO)
+import           Control.Monad.Trans.Except (ExceptT, throwE)
+import           Data.Budget
+import           Data.IxSet
+import           Data.JSON.Schema
+import           Rest
+import           Rest.Dictionary.Types
+import qualified Rest.Resource              as R
+import           Rest.Types.Info
+import           YabAcid
 
 type Identifier = BID
 
@@ -25,10 +26,10 @@ instance Info BID where
 
 -- resource :: Resource WithBudgetList WithBudgetItem Identifier Void Void
 resource = mkResourceReader
-  { R.name = "budget"
+  { R.name   = "budget"
   , R.schema = noListing $ named [("id",singleBy BID)]
   , R.create = Just create
-  , R.get = Just get
+  , R.get    = Just get
   , R.update = Just update
   , R.remove = Just remove
   }
