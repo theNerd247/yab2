@@ -69,7 +69,7 @@ getDB = ask
 
 makeAcidic ''YabAcid ['updateDB, 'getDB]
 
-class (HasBID a, Indexable a, Typeable a, Ord a) => HasYabAcid a where
+class (HasBID a, HasName a, Indexable a, Typeable a, Ord a) => HasYabAcid a where
   yabAcidLens :: YabAcidLens a
   yabAcidAuditLens :: YabAcidLens (Audit a)
 
@@ -88,8 +88,8 @@ class (HasBID a, Indexable a, Typeable a, Ord a) => HasYabAcid a where
       & yabAcidLens %~ updateIx (x^.bid) x
       & yabAcidAuditLens %~ insert (hist & auditAction .~ Modify)
 
-  getItemBy :: (YabDB a -> YabDB a) -> Getter YabAcid (YabDB a)
-  getItemBy f = yabAcidLens.to f
+  getItemsBy :: (MonadState YabAcid m) => (YabDB a -> YabDB a) -> m (YabDB a)
+  getItemsBy f = gets $ view $ yabAcidLens.to f
 
   deleteItem :: (MonadState YabAcid m, MonadIO m) => a -> m ()
   deleteItem x = do
@@ -100,3 +100,39 @@ class (HasBID a, Indexable a, Typeable a, Ord a) => HasYabAcid a where
 
 newItem :: (MonadState YabAcid m, MonadIO m, HasYabAcid a, Default a) => m a
 newItem = let x = def in insertItem x >> return x
+
+instance HasYabAcid BudgetItem where
+  yabAcidLens = budgetDB
+  yabAcidAuditLens = budgetAuditDB
+
+instance HasYabAcid ExpenseItem where
+  yabAcidLens = expenseDB
+  yabAcidAuditLens = expenseAuditDB
+
+instance HasYabAcid StartInfo where
+  yabAcidLens = startInfoDB
+  yabAcidAuditLens = startInfoAuditDB
+
+asYabList :: (Default a) => (MonadState YabAcid m, HasYabAcid a) => Name -> YabDB a -> m (Maybe (YabList a))
+asYabList name db = do
+  msinfo <- getItemsBy (getEQ name)
+  return $ do
+    sinfo <- earliestStartInfo $ toList msinfo
+    return $ def
+        & items .~ toList db
+        & startInfo .~ sinfo
+
+updateYabList :: (MonadIO m, MonadState YabAcid m, HasYabAcid a) => (YabList a) -> m ()
+updateYabList newItems = do
+  updateItem (newItems^.startInfo)
+  oldItems <- toList <$> (getItemsBy $ getEQ $ newItems^.name)
+  let updated  = DL.intersectBy elemSelect (newItems^.items) oldItems
+  let inserted = DL.deleteFirstsBy elemSelect (newItems^.items) oldItems
+  let deleted  = DL.deleteFirstsBy elemSelect oldItems (newItems^.items)
+  forM_ updated  $ updateItem
+  forM_ inserted $ insertItem
+  forM_ deleted  $ deleteItem
+  where
+    elemSelect a b = a^.bid == b^.bid
+
+
