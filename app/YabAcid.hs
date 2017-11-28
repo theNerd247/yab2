@@ -25,7 +25,7 @@ import Data.Default.IxSet
 import GHC.Generics hiding (to)
 import Control.Lens hiding (Indexable)
 import Control.Monad.Reader.Class
-import Control.Monad.State.Class
+import Control.Monad.State
 import Control.Monad.IO.Class
 import Data.Foldable (forM_,fold)
 import Data.Traversable (forM)
@@ -52,6 +52,8 @@ instance Default YabAcid
 
 type YabAcidLens a = Lens' YabAcid (YabDB a)
 
+type YabDBT m a = StateT YabAcid m a
+
 insertYabListItem :: (Indexable a, Ord a, Typeable a, MonadState YabAcid m) => YabAcidLens a -> a -> m ()
 insertYabListItem l e = l %= insert e
 
@@ -68,6 +70,14 @@ getDB :: Query YabAcid YabAcid
 getDB = ask
 
 makeAcidic ''YabAcid ['updateDB, 'getDB]
+
+withYABDB :: (MonadReader YabAcidState m, MonadIO m) => YabDBT m a -> m a
+withYABDB f = do 
+  db <- ask
+  ydb <- query' db GetDB
+  (a,s) <- runStateT f ydb
+  update' db $ UpdateDB s
+  return a
 
 class (HasBID a, HasName a, Indexable a, Typeable a, Ord a) => HasYabAcid a where
   yabAcidLens :: YabAcidLens a
@@ -134,5 +144,3 @@ updateYabList newItems = do
   forM_ deleted  $ deleteItem
   where
     elemSelect a b = a^.bid == b^.bid
-
-
