@@ -2,8 +2,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -52,239 +50,53 @@ $(deriveSafeCopy 0 'base ''YabAcid)
 
 instance Default YabAcid
 
-insertEAudit :: (Audit ExpenseItem) -> Update YabAcid ()
-insertEAudit x = expenseAuditDB %= insert x
+type YabAcidLens a = Lens' YabAcid (YabDB a)
 
-insertBAudit :: (Audit BudgetItem) -> Update YabAcid ()
-insertBAudit x = budgetAuditDB %= insert x
+insertYabListItem :: (Indexable a, Ord a, Typeable a, MonadState YabAcid m) => YabAcidLens a -> a -> m ()
+insertYabListItem l e = l %= insert e
 
-insertSAudit :: (Audit StartInfo) -> Update YabAcid ()
-insertSAudit x = startInfoAuditDB %= insert x
+updateYabListItem :: (MonadState YabAcid m, Indexable a, Ord a, Typeable a, HasBID a) => YabAcidLens a -> a -> m ()
+updateYabListItem l b = l %= updateIx (b^.bid) b
 
-insertE :: ExpenseItem -> Update YabAcid ()
-insertE e = expenseDB %= insert e
+deleteYabListItem :: (MonadState YabAcid m, Indexable a, Ord a, Typeable a, HasBID a) => YabAcidLens a -> a -> m ()
+deleteYabListItem l b = l %= deleteIx (b^.bid)
 
-insertB :: BudgetItem -> Update YabAcid ()
-insertB e = budgetDB %= insert e
+updateDB :: YabAcid -> Update YabAcid ()
+updateDB = put
 
-insertSI :: StartInfo -> Update YabAcid ()
-insertSI si = startInfoDB %= insert si
+getDB :: Query YabAcid YabAcid
+getDB = ask
 
-upsertEs :: [ExpenseItem] -> Update YabAcid [[ExpenseItem]]
-upsertEs es = do 
-  db <- use expenseDB
-  -- upsert each expense item individually
-  dups <- forM exs (upsertEs' db)
-  return $ fold dups
-  where 
-    upsertEs' db es = do
-      let (newDB,dups) = upsertExpenses es smallDB
-      expenseDB .= (db `union` newDB)
-      return dups
-      where
-        smallDB = db @>=<= ((earliestExpense es)^.expenseDate, (latestExpense es)^.expenseDate)
-    exs = DL.groupBy (\a b -> a^.name == b^.name) . DL.sortBy (\a b -> compare (a^.name) (b^.name)) $ es
+makeAcidic ''YabAcid ['updateDB, 'getDB]
 
-getSIByName :: Name -> Query YabAcid StartInfoDB
-getSIByName n = asks . view $ startInfoDB.to (@= n)
+class (HasBID a, Indexable a, Typeable a, Ord a) => HasYabAcid a where
+  yabAcidLens :: YabAcidLens a
+  yabAcidAuditLens :: YabAcidLens (Audit a)
 
-getEsByDate :: UTCTime -> UTCTime -> Query YabAcid ExpenseDB
-getEsByDate start end = asks . view $ expenseDB.to (@>=<= (start,end))
+  insertItem :: (MonadState YabAcid m, MonadIO m) => a -> m ()
+  insertItem newX = do
+    x <- liftIO $ setNewBID newX
+    hist <- makeAudit x
+    modify $ \ydb -> ydb
+      & yabAcidLens %~ insert x
+      & yabAcidAuditLens %~ insert (hist & auditAction .~ Create)
 
-getEsByNameAndDates :: Name -> UTCTime -> UTCTime -> Query YabAcid ExpenseDB
-getEsByNameAndDates n s e = asks . view $ expenseDB.to ((@= n) . (@>=<= (s,e)))
+  updateItem :: (MonadState YabAcid m, MonadIO m) => a -> m ()
+  updateItem x = do
+    hist <- makeAudit x
+    modify $ \ydb -> ydb
+      & yabAcidLens %~ updateIx (x^.bid) x
+      & yabAcidAuditLens %~ insert (hist & auditAction .~ Modify)
 
-getEsByAmount :: Amount -> Query YabAcid ExpenseDB
-getEsByAmount a = asks . view $ expenseDB.to (@= a)
+  getItemBy :: (YabDB a -> YabDB a) -> Getter YabAcid (YabDB a)
+  getItemBy f = yabAcidLens.to f
 
-getEsByReason :: String -> Query YabAcid ExpenseDB
-getEsByReason a = asks . view $ expenseDB.to (@= a)
+  deleteItem :: (MonadState YabAcid m, MonadIO m) => a -> m ()
+  deleteItem x = do
+    hist <- makeAudit x
+    modify $ \ydb -> ydb
+      & yabAcidLens %~ delete x
+      & yabAcidAuditLens %~ insert (hist & auditAction .~ Delete)
 
-getEsByName :: Name -> Query YabAcid ExpenseDB
-getEsByName a = asks . view $ expenseDB.to (@= a)
-
-getEsByBID :: BID -> Query YabAcid ExpenseDB
-getEsByBID a = asks . view $ expenseDB.to (@= a)
-
-getEsDB :: Query YabAcid ExpenseDB
-getEsDB = asks $ view expenseDB
-
-getBByName :: Name -> Query YabAcid BudgetDB
-getBByName n = asks . view $ budgetDB.to (@= n)
-
-getBByBID :: BID -> Query YabAcid BudgetDB
-getBByBID id = asks . view $ budgetDB.to (@= id)
-
-updateB :: BudgetItem -> Update YabAcid ()
-updateB b = budgetDB %= updateIx (b^.bid) b
-
-updateE :: ExpenseItem -> Update YabAcid ()
-updateE e = expenseDB %= updateIx (e^.bid) e
-
-updateSI :: StartInfo -> Update YabAcid ()
-updateSI si = startInfoDB %= updateIx (si^.bid) si
-
-getAllBNames :: Query YabAcid [Name]
-getAllBNames = do 
-  bs <- asks . view $ startInfoDB
-  return $ (groupBy bs)^..traversed._1
-
-deleteBByBID :: BID -> Update YabAcid ()
-deleteBByBID bid = budgetDB %= deleteIx bid
-
-deleteEByBID :: BID -> Update YabAcid ()
-deleteEByBID bid = expenseDB %= deleteIx bid
-
-deleteSIByBID :: BID -> Update YabAcid ()
-deleteSIByBID bid = startInfoDB %= deleteIx bid
-
-getBAuditDB :: Query YabAcid BudgetAuditDB
-getBAuditDB = asks . view $ budgetAuditDB
-
-$(makeAcidic ''YabAcid [
-  'deleteBByBID
-  ,'deleteEByBID
-  ,'deleteSIByBID
-  ,'getAllBNames
-  ,'getBAuditDB
-  ,'getBByName
-  ,'getBByBID
-  ,'getEsByAmount
-  ,'getEsByBID
-  ,'getEsByDate
-  ,'getEsByName
-  ,'getEsByNameAndDates
-  ,'getEsByReason
-  ,'getEsDB
-  ,'getSIByName
-  ,'insertB
-  ,'insertBAudit
-  ,'insertE
-  ,'insertEAudit
-  ,'insertSAudit
-  ,'insertSI
-  ,'updateB
-  ,'updateE
-  ,'updateSI
-  ,'upsertEs
-  ])
-
-insertExpenseItem db newE = do
-  e <- liftIO $ setNewBID newE
-  hist <- makeAudit e
-  update' db $ InsertE e
-  update' db $ InsertEAudit $ hist & auditAction .~ Create
-
-insertBudgetItem db newE = do
-  e <- liftIO $ setNewBID newE
-  hist <- makeAudit e
-  update' db $ InsertB e
-  update' db $ InsertBAudit $ hist & auditAction .~ Create
-
-insertStartInfo db newS = do
-  s <- liftIO $ setNewBID newS
-  hist <- makeAudit s
-  update' db $ InsertSI s
-  update' db $ InsertSAudit $ hist & auditAction .~ Create
-
--- inserts a list of expense items into the db and adds audits to the expenses
-insertExpenseList db es = do
-  forM_ (es^.items) (insertExpenseItem db)
-  insertStartInfo db (es^.startInfo)
-  
-insertBudgetList db es = do
-  forM_ (es^.items) (insertBudgetItem db)
-  insertStartInfo db (es^.startInfo)
-
-updateBudgetItem db b = do 
-  hist <- makeAudit b
-  update' db $ InsertBAudit $ hist & auditAction .~ Modify
-  update' db $ UpdateB b
-
-updateExpenseItem db e = do 
-  hist <- makeAudit e
-  update' db $ InsertEAudit $ hist & auditAction .~ Modify
-  update' db $ UpdateE e
-
-updateStartInfo db s = do 
-  hist <- makeAudit s
-  update' db $ InsertSAudit $ hist & auditAction .~ Modify
-  update' db $ UpdateSI s
-
-deleteBudgetItem db b = do
-  hist <- makeAudit b
-  update' db $ InsertBAudit $ hist & auditAction .~ Delete
-  update' db $ DeleteBByBID (b^.bid)
-
-deleteExpenseItem db b = do
-  hist <- makeAudit b
-  update' db $ InsertEAudit $ hist & auditAction .~ Delete
-  update' db $ DeleteEByBID (b^.bid)
-
-deleteStartInfo db b = do
-  hist <- makeAudit b
-  update' db $ InsertSAudit $ hist & auditAction .~ Delete
-  update' db $ DeleteSIByBID (b^.bid)
-
-mergeExpenses db = update' db . UpsertEs
-
-getBudgetByName db  = query' db . GetBByName
-
-getExpensesByDate db s = query' db . GetEsByDate s
-
-getExpensesByAmount db = query' db . GetEsByAmount
-
-getExpensesByReason db = query' db . GetEsByReason
-
-getExpensesByName db = query' db . GetEsByName
-
-getExpensesDB db = query' db GetEsDB
-
-getExpensesByNameAndDates db n d = query' db . GetEsByNameAndDates n d
-
-getExpensesByBID db = query' db . GetEsByBID
-
-getStartInfoByName db = query' db . GetSIByName
-
-getAllBudgetNames db = query' db GetAllBNames
-
-getBudgetAuditDB db = query' db GetBAuditDB
-
-getBudgetByBID db = query' db . GetBByBID
-
-asYabList :: (MonadIO m, HasName a, Typeable a, Ord a, Indexable a, Default a) => YabAcidState -> Name -> (m (YabDB a)) -> m (Maybe (YabList a))
-asYabList db name ydbQuery = do
-  -- get the earliest start info for the budget
-  msinfo <- getStartInfoByName db name
-  mydb <- (@= name) <$> ydbQuery 
-  return $ do
-    sinfo <- earliestStartInfo $ toList msinfo
-    return $ def 
-        & items .~ toList mydb
-        & startInfo .~ sinfo
-
-updateBudgetList :: (MonadIO m) => YabAcidState -> BudgetList -> m ()
-updateBudgetList db newItems = do
-  updateStartInfo db (newItems^.startInfo)
-  oldItems <- toList <$> (getBudgetByName db (newItems^.name))
-  let updated = DL.intersectBy elemSelect (newItems^.items) oldItems
-  let inserted = DL.deleteFirstsBy elemSelect (newItems^.items) oldItems
-  let deleted = DL.deleteFirstsBy elemSelect oldItems (newItems^.items)
-  forM_ updated $ updateBudgetItem db
-  forM_ inserted $ insertBudgetItem db
-  forM_ deleted $ deleteBudgetItem db
-  where
-    elemSelect a b = a^.bid == b^.bid
-
-updateExpenseList :: (MonadIO m) => YabAcidState -> ExpenseList -> m ()
-updateExpenseList db newItems = do
-  updateStartInfo db (newItems^.startInfo)
-  oldItems <- toList <$> (getExpensesByName db (newItems^.name))
-  let updated = DL.intersectBy elemSelect (newItems^.items) oldItems
-  let inserted = DL.deleteFirstsBy elemSelect (newItems^.items) oldItems
-  let deleted = DL.deleteFirstsBy elemSelect oldItems (newItems^.items)
-  forM_ updated $ updateExpenseItem db
-  forM_ inserted $ insertExpenseItem db
-  forM_ deleted $ deleteExpenseItem db
-  where
-    elemSelect a b = a^.bid == b^.bid
+newItem :: (MonadState YabAcid m, MonadIO m, HasYabAcid a, Default a) => m a
+newItem = let x = def in insertItem x >> return x
