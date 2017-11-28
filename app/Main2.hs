@@ -15,7 +15,7 @@ module Main where
 import CSV (parseDate)
 import Control.Lens hiding ((.=))
 import Control.Monad.IO.Class
-import Control.Monad.Reader.Class
+import Control.Monad.Reader
 import Control.Monad.State.Class
 import Control.Monad.State (get)
 import Control.Applicative
@@ -68,11 +68,10 @@ uploadTransaction = do
   maybe (withErr "no param called name") upload n
   where 
     upload name = do
-      dups <- uploadCSVFiles $ \f -> do
-        db <- asks db
+      n <- uploadCSVFiles $ \f -> do
         es <- loadNewTransactionFile (B.unpack name) f
-        mergeExpenses db es
-      asJSON $ mconcat dups
+        withYABDB db $ forM es updateItem >>= return . length
+      asJSON . object $ ["count" .= n]
 
 uploadCSVFiles :: (FilePath -> Handler b App a) -> Handler b App [a]
 uploadCSVFiles f = withTemporaryStore "/tmp" "yab-" $ \store -> do

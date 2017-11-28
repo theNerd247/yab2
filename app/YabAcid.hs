@@ -24,7 +24,7 @@ import Data.SafeCopy
 import Data.Default.IxSet
 import GHC.Generics hiding (to)
 import Control.Lens hiding (Indexable)
-import Control.Monad.Reader.Class
+import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.IO.Class
 import Data.Foldable (forM_,fold)
@@ -71,11 +71,11 @@ getDB = ask
 
 makeAcidic ''YabAcid ['updateDB, 'getDB]
 
-withYABDB :: (MonadReader YabAcidState m, MonadIO m) => YabDBT m a -> m a
-withYABDB f = do 
-  db <- ask
+withYABDB :: (MonadIO m, MonadReader r m) => (r -> YabAcidState) -> YabDBT m a -> m a
+withYABDB f x = do
+  db <- f <$> ask
   ydb <- query' db GetDB
-  (a,s) <- runStateT f ydb
+  (a,s) <- runStateT x ydb
   update' db $ UpdateDB s
   return a
 
