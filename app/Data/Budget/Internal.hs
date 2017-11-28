@@ -114,10 +114,11 @@ class HasName m where
 class HasYabDB m a | m -> a where
   yabDB :: Lens' m (YabDB a)
 
-class HasYabList m a | m -> a where
-  yabList :: Lens' m (YabList a)
+class HasYabList m where
+  type YabListItem m
+  yabList :: Lens' m (YabList (YabListItem m))
 
-  items :: Lens' m [a]
+  items :: Lens' m [YabListItem m]
   items = yabList . items
 
   yabListStartInfo :: Lens' m StartInfo
@@ -189,7 +190,8 @@ instance HasName (YabList a) where
 instance HasYabDB (YabDB a) a where
   yabDB = id
 
-instance HasYabList (YabList a) a where
+instance HasYabList (YabList a) where
+  type YabListItem (YabList a) = a
   yabList = id
   items = yabList . go where go f (YabList s l) = (\l' -> YabList s l') <$> f l
   yabListStartInfo = yabList . go where go f (YabList s l) = (\s' -> YabList s' l) <$> f s
@@ -337,7 +339,7 @@ getBalances s e b = [s..e]^..traverse . to (\d -> getBalanceAtPeriod d b)
 
 printBalances
   :: forall a s.
-     (HasStartInfo s, HasBudgetAmount a, HasRate a, HasYabList s a) =>
+    (HasStartInfo s, HasBudgetAmount (YabListItem s), HasRate (YabListItem s), HasYabList s) =>
      Int -> Int -> s -> IO ()
 printBalances start end budget = sequence_ $ [start..end]^..traverse . to printBal
   where
@@ -347,16 +349,16 @@ printBalances start end budget = sequence_ $ [start..end]^..traverse . to printB
       ++ (show $ getBalanceAtPeriod d budget)
 
 -- gets the budget balance for the current day (this uses utc time)
-currentBudgetBal :: (HasYabList s a, HasRate a, HasBudgetAmount a, HasStartInfo s) => s -> IO Amount 
+currentBudgetBal :: (HasYabList s, HasRate (YabListItem s), HasBudgetAmount (YabListItem s), HasStartInfo s) => s -> IO Amount 
 currentBudgetBal b = do 
   n <- getCurrentTime
   return $ getBalanceAtPeriod (dayToPeriod (b^.startDate) n) b
 
 -- | filters a yablist by the given whitelist of items to search for. If the
 -- whitelist is empty the original yablist is returned
-filterBudgetItems :: (HasName s, HasName a, HasYabList b a) => b -> [s] -> b
-filterBudgetItems b [] = b
-filterBudgetItems b bs = b & items %~ DL.filter hasName
+filterBudgetItems :: (HasName s, HasName (YabListItem b), HasYabList b) => [s] -> b -> b
+filterBudgetItems [] b = b
+filterBudgetItems bs b = b & items %~ DL.filter hasName
   where
     ns = view name <$> bs
     hasName x = x^.name `DL.elem` ns
