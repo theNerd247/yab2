@@ -21,7 +21,6 @@ import Data.Data
 import Data.Default
 import Data.Default.Time
 import Data.IxSet
-import Data.JSON.Schema hiding (Proxy, Object)
 import Data.SafeCopy
 import Data.Time
 import qualified Data.Budget.BudgetMigration as BEM
@@ -82,9 +81,6 @@ instance HasBudgetAmount BudgetItem where
 instance HasRate BudgetItem where
   rate = budgetItemRate
   
-instance JSONSchema BudgetItem where
-  schema = gSchema
-
 instance FromJSON BudgetItem where
   parseJSON v@(Object o) = BudgetItem 
     <$> o .: "rate" 

@@ -49,6 +49,15 @@ packages:
     git: git@github.com:theNerd247/Haskell-Decimal
     commit: 99b8bf27a57a4cd9e1ba561d88261036e1386b6d 
   extra-dep: true
+- location:
+    git: git@github.com:theNerd247/simple
+    commit: c562776a13c479e5330c701b9783810c514ee4cf
+  subdirs:
+    - simple
+    - simple-aeson
+    - simple-snap
+    - simple-string
+  extra-dep: true
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:

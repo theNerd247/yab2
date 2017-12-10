@@ -1,13 +1,3 @@
-<style>
-	.full {
-		height: 100vh;
-	}
-	.ontop {
-		position: fixed;
-		display: block;
-		height: 400px;
-	}
-</style>
 <template>
 	<el-container direction="vertical">
 		<el-header>
@@ -123,7 +113,8 @@
 </template>
 
 <script>
-	import Vue from 'vue'
+
+import Vue from 'vue'
 import BudgetsGraph from '@/shared/components/BudgetsGraph.vue'
 import Rate from '@/shared/components/Rate.vue'
 import DataTable from '@/shared/components/DataTable.vue'
@@ -187,3 +178,16 @@ export default {
 	}
 }
 </script>
+
+<style>
+	.full {
+		height: 100vh;
+	}
+	.ontop {
+		position: fixed;
+		display: block;
+		height: 400px;
+	}
+</style>
+
+

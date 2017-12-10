@@ -1,21 +1,32 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
+
 module Api.Yab where
 
-import Rest.Api
+import Snap
+import Data.Budget
+import YabAcid
+import Data.Acid
 import Api.ApiTypes
-import qualified Api.BudgetList as BudgetList
-import qualified Api.ExpenseList as ExpenseList
-import qualified Api.Expenses as Expenses
-import qualified Api.BudgetList.Status as Status
-import qualified Api.ExpenseList.ExpenseItem as ExpenseItem
-import qualified Api.BudgetList.BudgetItem as BudgetItem
+import Control.Lens
+import Control.Monad.IO.Class
+import Api.YabList
 
-api :: Api YabApi
-api = Versioned [(mkVersion 1 0 0, Some1 yab100)]
+data YabSnaplet = YabSnaplet
+  { _db :: YabAcidState
+  , _budgetItemSnaplet :: Snaplet (YabListSnaplet BudgetItem)
+  , _expenseItemSnaplet :: Snaplet (YabListSnaplet ExpenseItem)
+  }
 
-yab100 :: Router YabApi YabApi
-yab100 = root 
-  -/ route BudgetList.resource --/ route BudgetItem.resource
-    --/ route Status.resource
-  -/ route ExpenseList.resource
-    --/ route ExpenseItem.resource
-  -/ route Expenses.resource
+makeLenses ''YabSnaplet
+
+instance HasYabAcidSnaplet YabSnaplet where
+  snapletYabAcid = db
+
+appInit :: SnapletInit YabSnaplet YabSnaplet 
+appInit = makeSnaplet "yab" "Yab snaplet" Nothing $ do
+  dbRef <- liftIO $ openLocalStateFrom "/tmp/tst" (def :: YabAcid)
+  onUnload $ closeAcidState dbRef
+  b <- nestSnaplet "budget" budgetItemSnaplet yabListSnapInit
+  e <- nestSnaplet "expense" expenseItemSnaplet yabListSnapInit
+  return $ YabSnaplet dbRef b e

@@ -2,8 +2,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -27,7 +25,6 @@ import Data.Decimal
 import Data.Default
 import Data.Default.Time
 import Data.IxSet
-import Data.JSON.Schema hiding (Proxy, Object)
 import Data.Monoid
 import Data.SafeCopy
 import Data.Time
@@ -111,8 +108,9 @@ $(deriveSafeCopy 0 'base ''YabList)
 class HasName m where
   name :: Lens' m Name
 
-class HasYabDB m a | m -> a where
-  yabDB :: Lens' m (YabDB a)
+class HasYabDB m where
+  type YabDBItem m
+  yabDB :: Lens' m (YabDB (YabDBItem m))
 
 class HasYabList m where
   type YabListItem m
@@ -187,7 +185,8 @@ instance HasName StartInfo where
 instance HasName (YabList a) where
   name = yabList . startInfoBName
 
-instance HasYabDB (YabDB a) a where
+instance HasYabDB (YabDB a) where
+  type YabDBItem (YabDB a) = a
   yabDB = id
 
 instance HasYabList (YabList a) where
@@ -198,24 +197,6 @@ instance HasYabList (YabList a) where
 
 instance HasStartInfo (YabList a) where
   startInfo = yabListStartInfo
-
-instance JSONSchema Amount where
-  schema _ = Data.JSON.Schema.Number $ Bound Nothing Nothing
-
-instance JSONSchema AmountType where
-  schema = gSchema
-
-instance JSONSchema BudgetAmount where
-  schema = gSchema
-
-instance JSONSchema StartInfo where
-  schema = gSchema
-
-instance JSONSchema Rate where
-  schema = gSchema
-
-instance (JSONSchema a) => JSONSchema (YabList a) where
-  schema = gSchema
 
 instance (ToJSON a, Indexable a, Ord a, Typeable a) => ToJSON (YabDB a) where
   toJSON = toJSON . toList
@@ -364,5 +345,5 @@ filterBudgetItems bs b = b & items %~ DL.filter hasName
     hasName x = x^.name `DL.elem` ns
 
 -- updates each element by the given key using updateIx
-updateDBItems :: (HasYabDB r a, MonadState s m, Ord a, Indexable a, Typeable k, Typeable a) => Lens' s r -> k -> [a] -> m ()
+updateDBItems :: (HasYabDB r, MonadState s m, Ord (YabDBItem r), Indexable (YabDBItem r), Typeable k, Typeable (YabDBItem r)) => Lens' s r -> k -> [YabDBItem r] -> m ()
 updateDBItems l key values = l.yabDB %= (appEndo (foldMap (Endo . updateIx key) values))

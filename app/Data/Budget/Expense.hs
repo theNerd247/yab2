@@ -22,7 +22,6 @@ import Data.Default
 import Data.Default.IxSet
 import Data.Default.Time
 import Data.IxSet
-import Data.JSON.Schema hiding (Proxy, Object)
 import Data.SafeCopy
 import Data.Time
 import qualified Data.Budget.ExpenseMigration as BEM
@@ -94,9 +93,6 @@ instance Migrate ExpenseItem where
     , _expenseBID = BEM._expenseBID e
     , _expenseBudgetName = BEM._expenseBudgetName e
     }
-
-instance JSONSchema ExpenseItem where
-  schema = gSchema
 
 instance ToJSON ExpenseItem where
   toJSON ei = object $

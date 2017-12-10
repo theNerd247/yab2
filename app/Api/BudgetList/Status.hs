@@ -16,7 +16,7 @@ import           Data.Data
 import           Data.IxSet
 import           Data.JSON.Schema           hiding (Proxy)
 import qualified Data.List                  as DL
-import           Data.Maybe                 (listToMaybe)
+import           Data.Maybe                 (listToMaybe, maybeToList)
 import qualified Data.Text                  as T
 import           GHC.Generics               hiding (to)
 import           Rest
@@ -50,14 +50,16 @@ list All     = listAll
 list ByRange = listByDayRange
 
 get :: Handler WithStatus
-get = mkHandler (budgetItemFilterParam . jsonO) $ \env -> do
+get = mkHandler (jsonI . jsonO) $ \env -> do
   name <- (lift . lift) ask
   db <- (lift . lift . lift) (asks $ view db)
   date <- ask
-  let (BudgetItemFilter itemsFilter) = param env
-  budget <- asYabList db name (getBudgetByName db name) !? NotAllowed
-  expenses <- asYabList db name (getExpensesByName db name) !? NotAllowed
-  return $ compareBudgetsOn (dayToRate (budget^.startDate) $ dayToDate date) (filterBudgetItems budget itemsFilter) (filterBudgetItems expenses itemsFilter)
+  let itemsFilter = fmap T.unpack . maybeToList $ input env 
+  bs <- asYabList db name (getBudgetByName db name)   !? NotAllowed
+  es <- asYabList db name (getExpensesByName db name) !? NotAllowed
+  let budget = filterBudgetItems itemsFilter bs
+  let expenses = filterBudgetItems itemsFilter es
+  return $ compareBudgetsOn (dayToRate (budget^.startDate) $ dayToDate date) budget expenses
 
 listByDayRange :: ListHandler WithBudgetList
 listByDayRange = mkCustomListing (dayRangeParam . jsonO) $ \env -> do

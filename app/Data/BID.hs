@@ -15,7 +15,6 @@ import Data.SafeCopy
 import Data.Digest.Pure.MD5
 import Data.Time.Clock.POSIX
 import GHC.Generics
-import Data.JSON.Schema hiding (Proxy, Object)
 import qualified Data.BIDMigration as BM
 import qualified Data.Serialize as S
 
@@ -49,6 +48,3 @@ instance FromJSON BID
 instance ToJSON BID
 
 instance Default BID
-
-instance JSONSchema BID where
-  schema = gSchema

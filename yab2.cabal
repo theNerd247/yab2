@@ -31,10 +31,13 @@ executable yab2
                      , acid-state
                      , bytestring
                      , cassava
+                     , simple
+                     , simple-aeson
+                     , simple-snap
+                     , simple-string
                      , containers
                      , snap
                      , errors
-                     , json-schema
                      , Decimal
                      , snap-core
                      , data-default
@@ -46,9 +49,6 @@ executable yab2
                      , cereal
                      , hashable
                      , lens
-                     , rest-core
-                     , rest-types
-                     , rest-snap
                      , transformers
                      , mtl
                      , safecopy

@@ -29,12 +29,3 @@ instance JSONSchema DayRange where
   schema = gSchema
 
 dayRangeParam = mkPar $ DayRange <$> withParam "sdate" <*> withParam "edate"
-
-newtype BudgetItemFilter = BudgetItemFilter [Name] 
-  deriving (Eq,Ord,Read,Show,Data,Typeable, Generic)
-
-instance ToJSON BudgetItemFilter
-
-instance FromJSON BudgetItemFilter
-
-budgetItemFilterParam = mkPar $ BudgetItemFilter . fmap T.unpack <$> withParam "budgetItems"

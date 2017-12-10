@@ -2,13 +2,10 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Data.Audit where
 
@@ -24,7 +21,6 @@ import Data.Default.Time
 import Data.IxSet
 import Data.Default
 import qualified Data.AuditMigration as AM
-import Data.JSON.Schema hiding (Proxy, Object)
 import Data.BID
 import Data.Foldable (find)
 import Control.Lens hiding ((.=), Indexable)
@@ -57,8 +53,9 @@ instance (SafeCopy a) => Migrate (Audit a) where
     , _auditAction = Modify
     }
 
-class HasAudit m a | m -> a where
-  audit :: Lens' m (Audit a)
+class HasAudit m where
+  type HasAuditItem m
+  audit :: Lens' m (Audit (HasAuditItem m))
 
   modTime :: Lens' m UTCTime
   modTime = audit . modTime
@@ -66,16 +63,18 @@ class HasAudit m a | m -> a where
   auditBID :: Lens' m BID
   auditBID = audit . auditBID
 
-  modData :: Lens' m a
+  modData :: Lens' m (HasAuditItem m)
   modData = audit . modData
 
   auditAction :: Lens' m AuditAction
   auditAction = audit . auditAction
 
-class HasAuditDB m a | m -> a where
-  auditDB :: Lens' m (AuditDB a)
+class HasAuditDB m where
+  type AuditDBItem m
+  auditDB :: Lens' m (AuditDB (AuditDBItem m))
 
-instance HasAudit (Audit a) a where
+instance HasAudit (Audit a) where
+  type HasAuditItem (Audit a) = a
   audit = id
   modTime = audit . go where go f (Audit t abid d a) = (\t' -> Audit t' abid d a) <$> f t
   auditBID = audit . go where go f (Audit t abid d a) = (\abid' -> Audit t abid' d a) <$> f abid
@@ -85,7 +84,8 @@ instance HasAudit (Audit a) a where
 instance HasBID (Audit a) where
   bid = auditBID
 
-instance HasAuditDB (AuditDB a) a where
+instance HasAuditDB (AuditDB a) where
+  type AuditDBItem (AuditDB a) = a
   auditDB = id
 
 instance Indexable (Audit a) where
@@ -100,12 +100,6 @@ instance Indexable (Audit a) where
       action a = (:[]) $ a^.auditAction
 
 instance FromJSON AuditAction 
-
-instance JSONSchema AuditAction where
-  schema = gSchema
-
-instance (JSONSchema a) => JSONSchema (Audit a) where
-  schema = gSchema
 
 instance (FromJSON a) => FromJSON (Audit a)
 

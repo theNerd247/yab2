@@ -1,23 +1,23 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE Rank2Types #-}
 
 module Api.ApiTypes where
 
 import YabAcid 
 import Control.Lens
-import Control.Monad.Reader (MonadReader, ReaderT (..))
-import Control.Monad.Trans (MonadIO)
+import Snap.Snaplet
+import Control.Monad.Reader.Class
+import Control.Monad.IO.Class
  
-newtype YabApiData = YabApiData
-  { _db :: YabAcidState
-  }
+type YabSnapletLens b = Lens' b YabAcidState
 
-makeLenses ''YabApiData
+class HasYabAcidSnaplet b where
+  snapletYabAcid :: YabSnapletLens b
 
-newtype YabApi a = YabApi 
-	{ unYabApi :: ReaderT YabApiData IO a
-	}
-	deriving (Applicative, Functor, Monad, MonadIO, MonadReader YabApiData)
+{-withYabSnapletDB :: (MonadSnaplet m, MonadIO (m b YabSnaplet), MonadReader Y, HasYabAcidSnaplet b) => YabDBT (m b YabSnaplet) a -> m b v a-}
 
-runYabApi :: YabApiData -> YabApi a -> IO a
-runYabApi yabData = flip runReaderT yabData . unYabApi
+withYabSnapletDB :: (HasYabAcidSnaplet b, MonadSnaplet m, MonadIO (m b b), MonadReader b (m b b)) => YabDBT (m b b) a -> m b v a
+withYabSnapletDB f = withTop' id $ do
+  s <- ask
+  withYABDB (s^.snapletYabAcid) f
