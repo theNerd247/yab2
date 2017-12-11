@@ -31,7 +31,7 @@ import qualified Data.Text as DT
 
 data BudgetItem = BudgetItem 
   { _budgetItemRate :: Rate
-  , _budgetItemBudgetAmount :: BudgetAmount
+  , _budgetItemAmount :: BudgetAmount
   , _budgetName :: Name
   , _budgetItemBID :: BID
   } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
@@ -64,7 +64,7 @@ instance Migrate BudgetItem where
   type MigrateFrom BudgetItem = BEM.BudgetItem_v0
   migrate b = BudgetItem  
     { _budgetItemRate = Periodic $ BEM._budgetItemRate b
-    , _budgetItemBudgetAmount = BEM._budgetItemBudgetAmount b
+    , _budgetItemAmount = BEM._budgetItemAmount b
     , _budgetName = BEM._budgetName b
     , _budgetItemBID = BEM._budgetItemBID b
     }
@@ -75,8 +75,8 @@ instance HasBID BudgetItem where
 instance HasName BudgetItem where
   name = budgetName
 
-instance HasBudgetAmount BudgetItem where
-  budgetAmount = budgetItemBudgetAmount
+instance HasAmount BudgetItem where
+  amount = budgetItemAmount
 
 instance HasRate BudgetItem where
   rate = budgetItemRate
@@ -91,7 +91,7 @@ instance FromJSON BudgetItem where
 
 instance ToJSON BudgetItem where
   toJSON bi = object $ 
-    budgetAmountJSON (bi^.budgetItemBudgetAmount)
+    budgetAmountJSON (bi^.budgetItemAmount)
     ++ ["rate" .= (bi^.rate)
        , "name" .= (bi^.name)
        , "id" .= (bi^.bid)

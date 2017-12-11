@@ -32,7 +32,7 @@ import qualified Data.Text as DT
 data ExpenseItem = ExpenseItem
   { _expenseRate :: Rate
   , _expenseReason :: String
-  , _expenseItemBudgetAmount :: BudgetAmount
+  , _expenseItemAmount :: Amount
   , _expenseBID :: BID
   , _expenseBudgetName :: Name
   } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
@@ -63,8 +63,8 @@ instance FromJSON ExpenseItem where
     <*> o .: "name"
   parseJSON _ = mempty
 
-instance HasBudgetAmount ExpenseItem where
-  budgetAmount = expenseItemBudgetAmount
+instance HasAmount ExpenseItem where
+  amount = expenseItemAmount
 
 instance HasName ExpenseItem where
   name = expenseBudgetName
@@ -89,7 +89,7 @@ instance Migrate ExpenseItem where
   migrate e = ExpenseItem
     { _expenseRate = OneTime $ BEM._expenseDate e
     , _expenseReason = BEM._expenseReason e
-    , _expenseItemBudgetAmount = BEM._expenseItemBudgetAmount e
+    , _expenseItemAmount = BEM._expenseItemAmount e
     , _expenseBID = BEM._expenseBID e
     , _expenseBudgetName = BEM._expenseBudgetName e
     }

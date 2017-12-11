@@ -113,9 +113,6 @@ class (HasBID a, HasName a, Indexable a, Typeable a, Ord a) => HasYabAcid a wher
       & yabAcidLens %~ delete x
       & yabAcidAuditLens %~ insert (hist & auditAction .~ Delete)
 
-  itemCount :: (MonadState YabAcid m) => YabDB a -> m Int
-  itemCount = return . size
-
 newItem :: (MonadState YabAcid m, HasYabAcid a, MonadIO m, Default a) => m a
 newItem = let x = def in insertItem x >> return x
 
@@ -131,6 +128,12 @@ instance HasYabAcid StartInfo where
   yabAcidLens = startInfoDB
   yabAcidAuditLens = startInfoAuditDB
 
+deletYabList nm = do
+  mylist <- asYabList nm =<< getItemsBy (@= nm)
+  flip (maybe $ return ()) mylist $ \ylist -> do
+    forM (ylist^.items) deleteItem 
+    deleteItem (ylist^.yabListStartInfo)
+
 insertYabList :: (MonadIO m, MonadState YabAcid m, HasYabAcid a, Default a) => YabList a -> m (YabList a)
 insertYabList l = getItemsBy (@= (l^.name)) >>= asYabList (l^.name) >>= maybe (mkNew l) (\bs -> return bs)
   where
@@ -143,7 +146,7 @@ insertYabList l = getItemsBy (@= (l^.name)) >>= asYabList (l^.name) >>= maybe (m
         & startInfo .~ si
         & items .~ is
 
-asYabList :: (Default a, MonadState YabAcid m, HasYabAcid a) => Name -> YabDB a -> m (Maybe (YabList a))
+asYabList :: (HasStartInfo b, Ord (YabListItem b), HasYabList b, Default b, Typeable k, MonadState YabAcid m) => k -> IxSet (YabListItem b) -> m (Maybe b)
 asYabList name db = do
   msinfo <- getItemsBy (getEQ name)
   return $ do

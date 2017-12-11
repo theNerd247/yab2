@@ -4,10 +4,11 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Data.BID where
 
-import Control.Lens
+import Control.Lens hiding ((.=))
 import Data.Aeson
 import Data.Default
 import Data.Data
@@ -48,3 +49,9 @@ instance FromJSON BID
 instance ToJSON BID
 
 instance Default BID
+
+toBIDJSON a = ["id" .= (a^.bid)]
+
+parseBIDJSON (Object o) = do
+  b <- o .: "id"
+  return $ \v -> v & bid .~ b
