@@ -37,53 +37,65 @@ makeLenses ''YabListFilter
 
 type YabListSnaplet a = Proxy a
 
-yabListSnapInit :: (HasYabAcidSnaplet b, Default a, FromJSON a, ToJSON a, HasYabAcid a, HasBudgetAmount a) => SnapletInit b (YabListSnaplet a)
+yabListSnapInit :: (HasYabAcidSnaplet b, Default a, FromJSON a, ToJSON a, HasYabAcid a) => SnapletInit b (YabListSnaplet a)
 yabListSnapInit = makeSnaplet "yablist" "snaplet for yablist interface" Nothing $ do
-  addRoutes [("", runAesonApi getYabList)
-            ,("names", getNames)
+  addRoutes [("", runAesonApi getListFromParams)
+            ,("names", runAesonApi getNames)
             ,("size", getYabListSize)
             ,("update", update)
             ,("create", create)
             ]
   return Proxy
 
-getNames :: (HasYabAcidSnaplet b) => Handler b (YabListSnaplet a) ()
-getNames = runAesonApi $ do
+getNames :: (HasYabAcidSnaplet b) => Handler b (YabListSnaplet a) [Name]
+getNames = do
   ns <- withYabSnapletDB $ uses (yabAcidLens :: YabAcidLens BudgetItem) groupBy
-  return $ (ns^..folded._1 :: [Name])
+  return $ ns^..folded._1
 
 withFilter :: Handler b v YabListFilter
 withFilter = YabListFilter 
   <$> (skipParse <$> fromParam "name") 
   <*> (fmap skipParse <$> fromParams ' ' "subNames")
 
-getYabDB :: (HasYabAcidSnaplet b, HasYabAcid a) => Handler b (YabListSnaplet a) (YabDB a)
+getYabDB :: (HasYabAcidSnaplet b, HasYabAcid a) => Handler b (YabListSnaplet a) (IxSet a)
 getYabDB = do
   filter <- withFilter
   withYabSnapletDB $ getItemsBy (@= (filter^.nameFilter))
 
-getYabList :: (HasYabAcidSnaplet b, Default a, HasYabAcid a, ToJSON a) => Handler b (YabListSnaplet a) (YabList a)
-getYabList = do
+getYabList :: (HasYabAcidSnaplet b, Default a, HasYabAcid a) => Name -> Handler b (YabListSnaplet a) (YabList a)
+getYabList nm = throwMaybe (AsYabListError "Couldn't convert to yablist in get") =<< (withYabSnapletDB $ asYabList nm =<< getItemsBy (@= nm))
+
+getListFromParams :: (HasYabAcidSnaplet b, Default a, HasYabAcid a, ToJSON a) => Handler b (YabListSnaplet a) (YabList a)
+getListFromParams = do
   filter <- withFilter
-  let nm = filter^.nameFilter
-  db <- withYabSnapletDB $ asYabList nm =<< getItemsBy (@= nm)
-  ylist <- throwMaybe (AsYabListError "Couldn't convert to yablist in get") db
+  ylist <- getYabList $ filter^.nameFilter
   return $ filterBudgetItems (filter^.subNamesFilter) ylist
 
-getFromBody :: (FromJSON a) => Handler b (YabListSnaplet a) (YabList a)
+withCount :: (HasItems a) => a -> Handler b v a
+withCount xs = do
+  offset <- fromParam "offset"
+  count <- fromParam "count"
+  return $ xs & items %~ take count . drop offset 
+
+getFromBody :: (FromJSON a, HasYabAcid a) => Handler b (YabListSnaplet a) (YabList a)
 getFromBody = SA.fromBody
 
 getYabListSize :: (HasYabAcidSnaplet b, HasYabAcid a) => Handler b (YabListSnaplet a) ()
 getYabListSize = runAesonApi $ size <$> getYabDB
 
-update :: (HasYabAcidSnaplet b, HasYabAcid a, FromJSON a, ToJSON a, HasBudgetAmount a, Default a) => Handler b (YabListSnaplet a) ()
+update :: (HasYabAcidSnaplet b, HasYabAcid a, FromJSON a, ToJSON a, Default a) => Handler b (YabListSnaplet a) ()
 update = runAesonApi $ withYabSnapletDB . updateYabList =<< getFromBody
 
-create :: (HasYabAcidSnaplet b, HasYabAcid a, FromJSON a, ToJSON a, HasBudgetAmount a, Default a) => Handler b (YabListSnaplet a) ()
+create :: (HasYabAcidSnaplet b, HasYabAcid a, FromJSON a, ToJSON a, Default a) => Handler b (YabListSnaplet a) ()
 create = runAesonApi $ withYabSnapletDB . insertYabList =<< getFromBody
 
-delete :: (HasYabAcidSnaplet b, HasYabAcid a, HasBudgetAmount a, Default a) => Handler b (YabListSnaplet a) ()
-delete :: 
+delete :: (HasYabAcidSnaplet b, HasYabAcid a, Default a, ToJSON a) => Handler b (YabListSnaplet a) ()
+delete = runAesonApi $ withYabSnapletDB . deleteYabList =<< getListFromParams
+
+getAll :: (HasYabAcidSnaplet b, HasYabAcid a, Default a, ToJSON a) => Handler b (YabListSnaplet a) ()
+getAll = runAesonApi $ do
+  ns <- getNames
+  forM ns $ \nm -> getYabList nm
 
 {-class (HasYabAcid a, Default a, Indexable a) => HasYabListApiResource a where-}
   {-getHandler :: ExceptT Reason_ WithYabList (YabList a)-}
@@ -138,7 +150,7 @@ delete ::
   {-names <- withYABDB db $ asks (view budgetDB) >>= return . fmap name-}
   {-forM names $ \name -> do-}
     {-b <- withYABDB db $ asYabList name $ getItemsBy (@= name)-}
-    {-return $ b & lifted.items %~ (take (count range) . drop (offset range))-}
+    {-return $ b & lifted.items %~ -}
 
 {-listAllStatuses :: ListHandler YabApi-}
 {-listAllStatuses = mkListing jsonO $ \_ -> do-}

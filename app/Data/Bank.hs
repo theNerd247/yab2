@@ -12,23 +12,19 @@
 module Data.Bank where
 
 import CSV
-import Control.Exception
-import Control.Lens hiding ((.=))
-import Control.Monad.Catch
+import Control.Lens
+import Data.Aeson
 import Control.Monad.IO.Class
-import Control.Monad.Reader (ask)
-import Control.Monad.State (get,put,modify)
-import Data.Acid
 import Data.BID
+import Data.Budget.Amount
 import Data.Budget.Expense
-import Data.Budget.Internal
+import Data.Budget.Name
+import Data.Budget.Rate
 import Data.Data
-import Data.Default.Time
 import Data.Default
+import Data.Default.Time
 import Data.Time
-import Data.Traversable (forM)
-import Data.Aeson hiding ((.~))
-import GHC.Generics hiding (to)
+import GHC.Generics hiding (to, from)
 import System.FilePath.Posix
 import qualified Data.Csv as CSV
 import qualified Data.List as DL
@@ -79,13 +75,10 @@ toExpense bName t = do
   return $ def
     & bid .~ bd
     & name .~ bName
-    & expenseRate .~ (OneTime $ dayToDate (t^.tDate))
+    & expenseRate .~ (OneTime $ t^.tDate.dayDateIso)
     & expenseReason .~ (t^.tDesc)
-    & amountType .~ case (c > 0) of
-      True -> AmountType ""
-      _ -> AmountType ""
     & amount .~ (c - d)
   where
-    d = t^.tDebit . to num . to doubleToAmount
-    c = t^.tCredit . to num . to doubleToAmount
+    d = t^.tDebit . to num . from amountDoubleIso
+    c = t^.tCredit . to num . from amountDoubleIso
     num = maybe 0 id

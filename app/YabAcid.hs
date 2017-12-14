@@ -1,12 +1,12 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module YabAcid where
@@ -21,7 +21,7 @@ import Data.Data
 import Data.Default
 import Data.Budget
 import Data.SafeCopy
-import Data.Default.IxSet
+import Data.Default.IxSet hiding (Proxy)
 import GHC.Generics hiding (to)
 import Control.Lens hiding (Indexable)
 import Control.Monad.Reader
@@ -37,12 +37,12 @@ import qualified Data.List as DL
 type YabAcidState = AcidState YabAcid
 
 data YabAcid = YabAcid
-  { _budgetDB :: BudgetDB
-  , _budgetAuditDB :: BudgetAuditDB
-  , _expenseDB :: ExpenseDB
-  , _expenseAuditDB :: ExpenseAuditDB
-  , _startInfoDB :: StartInfoDB
-  , _startInfoAuditDB :: StartInfoAuditDB
+  { _budgetDB :: IxSet BudgetItem
+  , _budgetAuditDB :: IxSet (Audit BudgetItem)
+  , _expenseDB :: IxSet ExpenseItem
+  , _expenseAuditDB :: IxSet (Audit ExpenseItem)
+  , _startInfoDB :: IxSet StartInfo
+  , _startInfoAuditDB :: IxSet (Audit StartInfo)
   } deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
 
 makeLenses ''YabAcid
@@ -51,7 +51,7 @@ $(deriveSafeCopy 0 'base ''YabAcid)
 
 instance Default YabAcid
 
-type YabAcidLens a = Lens' YabAcid (YabDB a)
+type YabAcidLens a = Lens' YabAcid (IxSet a)
 
 type YabDBT m a = StateT YabAcid m a
 
@@ -59,15 +59,6 @@ newtype AsYabListError = AsYabListError String
   deriving (Show)
 
 instance Exception AsYabListError
-
-insertYabListItem :: (Indexable a, Ord a, Typeable a, MonadState YabAcid m) => YabAcidLens a -> a -> m ()
-insertYabListItem l e = l %= insert e
-
-updateYabListItem :: (MonadState YabAcid m, Indexable a, Ord a, Typeable a, HasBID a) => YabAcidLens a -> a -> m ()
-updateYabListItem l b = l %= updateIx (b^.bid) b
-
-deleteYabListItem :: (MonadState YabAcid m, Indexable a, Ord a, Typeable a, HasBID a) => YabAcidLens a -> a -> m ()
-deleteYabListItem l b = l %= deleteIx (b^.bid)
 
 updateDB :: YabAcid -> Update YabAcid ()
 updateDB = put
@@ -103,7 +94,7 @@ class (HasBID a, HasName a, Indexable a, Typeable a, Ord a) => HasYabAcid a wher
       & yabAcidLens %~ updateIx (x^.bid) x
       & yabAcidAuditLens %~ insert (hist & auditAction .~ Modify)
 
-  getItemsBy :: (MonadState YabAcid m) => (YabDB a -> YabDB a) -> m (YabDB a)
+  getItemsBy :: (MonadState YabAcid m) => (IxSet a -> IxSet a) -> m (IxSet a)
   getItemsBy f = gets $ view $ yabAcidLens.to f
 
   deleteItem :: (MonadState YabAcid m, MonadIO m) => a -> m ()
@@ -128,14 +119,13 @@ instance HasYabAcid StartInfo where
   yabAcidLens = startInfoDB
   yabAcidAuditLens = startInfoAuditDB
 
-deletYabList nm = do
-  mylist <- asYabList nm =<< getItemsBy (@= nm)
-  flip (maybe $ return ()) mylist $ \ylist -> do
-    forM (ylist^.items) deleteItem 
-    deleteItem (ylist^.yabListStartInfo)
+deleteYabList ylist = do
+  forM (ylist^.items) deleteItem 
+  deleteItem (ylist^.yabListStartInfo)
 
-insertYabList :: (MonadIO m, MonadState YabAcid m, HasYabAcid a, Default a) => YabList a -> m (YabList a)
-insertYabList l = getItemsBy (@= (l^.name)) >>= asYabList (l^.name) >>= maybe (mkNew l) (\bs -> return bs)
+insertYabList l = getItemsBy (@= (l^.name)) 
+  >>= asYabList (l^.name) 
+  >>= maybe (mkNew l) (\bs -> return bs)
   where
     mkNew l = do
       si <- liftIO . setNewBID $ l^.startInfo
@@ -146,25 +136,26 @@ insertYabList l = getItemsBy (@= (l^.name)) >>= asYabList (l^.name) >>= maybe (m
         & startInfo .~ si
         & items .~ is
 
-asYabList :: (HasStartInfo b, Ord (YabListItem b), HasYabList b, Default b, Typeable k, MonadState YabAcid m) => k -> IxSet (YabListItem b) -> m (Maybe b)
 asYabList name db = do
-  msinfo <- getItemsBy (getEQ name)
+  msinfo <- getItemsBy (@= name)
   return $ do
-    sinfo <- earliestStartInfo $ toList msinfo
-    return $ def
-        & items .~ toList db
-        & startInfo .~ sinfo
+    sinfo <- msinfo^.earliest :: Maybe StartInfo
+    return $ YabList
+      { _itemsDB = db
+      , _yabListStartInfo = sinfo
+      }
 
-updateYabList :: (MonadIO m, Default a, MonadState YabAcid m, HasYabAcid a) => (YabList a) -> m (YabList a)
 updateYabList newItems = do
   updateItem (newItems^.startInfo)
-  oldItems <- toList <$> (getItemsBy $ getEQ $ newItems^.name)
-  let updated  = DL.intersectBy elemSelect (newItems^.items) oldItems
-  let inserted = DL.deleteFirstsBy elemSelect (newItems^.items) oldItems
-  let deleted  = DL.deleteFirstsBy elemSelect oldItems (newItems^.items)
+  oldItems <- getItemsBy (getEQ $ newItems^.name)
+  let ois = oldItems^.items
+  let nis = newItems^.items
+  let updated  = DL.intersectBy elemSelect nis ois
+  let inserted = DL.deleteFirstsBy elemSelect nis ois
+  let deleted  = DL.deleteFirstsBy elemSelect ois nis
   forM_ updated  $ updateItem
   forM_ inserted $ insertItem
   forM_ deleted  $ deleteItem
-  return . fromJust =<< asYabList (newItems^.name) =<< getItemsBy (getEQ $ newItems^.name)
+  return newItems
   where
     elemSelect a b = a^.bid == b^.bid
